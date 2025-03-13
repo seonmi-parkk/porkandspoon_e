@@ -212,7 +212,7 @@ function sendApproval(){
     
     if (isValid) {
 		checkApprLineNull();
-		textEaditorWrite('/draftWrite/sd',true);	
+		textEaditorWrite('/approval/write/sd',true);
     }else {
     	 layerPopup("필수 값을 모두 입력하세요.",'확인',false);
     }
@@ -231,7 +231,7 @@ function btn2Act() {
 function saveTemp(){
 	checkApprLineNull();
 	document.querySelector('input[name="status"]').value = "sv";
-	textEaditorWrite('/draftWrite/sv',false);	
+	textEaditorWrite('/approval/write/sv',false);
 	
 }
 

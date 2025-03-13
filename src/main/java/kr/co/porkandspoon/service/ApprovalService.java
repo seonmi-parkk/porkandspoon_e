@@ -40,8 +40,14 @@ public class ApprovalService {
 
 	Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 	
-	@Autowired ApprovalDAO approvalDAO;
-	@Autowired AlarmService alarmService;
+	private final ApprovalDAO approvalDAO;
+	private final AlarmService alarmService;
+
+	public ApprovalService(ApprovalDAO approvalDAO, AlarmService alarmService) {
+		this.approvalDAO = approvalDAO;
+		this.alarmService = alarmService;
+	}
+
     @Value("${upload.path}") String paths;
     @Value("${uploadTem.path}") String tem_path;
 	
@@ -55,85 +61,42 @@ public class ApprovalService {
 
 	@Transactional
 	public String saveDraft(String[] appr_user, ApprovalDTO approvalDTO, MultipartFile[] attachedFiles, MultipartFile[] logoFile, String status, String[] new_filename) {
+		// 문서번호 생성
 		approvalDTO.setDocument_number(generateDocumentNumber(approvalDTO.getTarget_type()));
-		logger.info("docNumber : "+ approvalDTO.getDocument_number());
-		logger.info("getUsername : "+ approvalDTO.getUsername());
 		
 		// draft_idx 가져오기 
 		String draftIdx = approvalDTO.getDraft_idx();
-		logger.info("@@@approvalDTO.getCOntent!!! : "+ approvalDTO.getContent());
+		// 새로 저장하는 경우
 		if(draftIdx == null || draftIdx.isEmpty()) {
 		    draftIdx = String.valueOf(approvalDAO.getDraftIdx());
 			approvalDTO.setDraft_idx(draftIdx);
-			logger.info("draftIdx db: "+ draftIdx);
 		}
+
+		// draft 테이블에 저장
 		int row = approvalDAO.saveDraft(approvalDTO);
 		
-		//기존 결재라인 삭제
-		if(status.equals("sv")) {
-			approvalDAO.removeApprovalLine(draftIdx);
-		}
+		// 결재라인 삭제
+		approvalDAO.removeApprovalLine(draftIdx);
 		// 결재라인 저장
 	    approvalDAO.saveApprovalLine(draftIdx, appr_user, status);
-	    
-//	    // 결재라인 저장 or 업데이트
-//		for(int order_num = 0; order_num < appr_user.length; order_num++) {
-//			approvalDAO.saveApprovalLine(draftIdx, appr_user[order_num], order_num, status);
-//		}
-//		// 결재라인 인원수보다 큰 order_num의 기존 데이터 삭제
-		
-	  //  int existingCount = approvalDAO.checkExistingApprovalLine(draftIdx);
-	    //if (existingCount == 0) {
-	   // }
-//	    else {
-//	    	for (int i = 0; i < appr_user.length; i++) {
-//	    		approvalDAO.updateApprovalLine(draftIdx, appr_user[i], i);
-//			}
-//	    }
-		logger.info("row : "+ row);
 
-		
 	    // 이미지 정보 저장 (이미지가 있을 경우 반복문 사용)
         List<FileDTO> imgs = approvalDTO.getFileList();
         if (imgs != null && !imgs.isEmpty()) {
             for (FileDTO img : imgs) {
-            	logger.info("img : "+ img);
-            	logger.info("img.getOri_filename() : "+ img.getOri_filename());
                 img.setPk_idx(draftIdx);
                 img.setCode_name("draft");
-                img.setType("img"); //이게맞나...?check!!!
+                img.setType("img");
                 fileWrite(img); // 게시글 이미지 파일 복사 저장
             }
         }
         
-        // 첨부파일 저장
-//        int existingFile = approvalDAO.checkExistingFile(draftIdx);
-//	    if (existingFile == 0) {
-//	        saveFile(files, draftIdx);
-//	    }
-//     // 로고 파일 저장 처리
-//        if (logoFile != null && !logoFile.isEmpty()) {
-//            logger.info("로고 파일 있음: " + logoFile.getOriginalFilename());
-//            String oriLogoFilename = logoFile.getOriginalFilename();
-//            String logoExt = oriLogoFilename.substring(oriLogoFilename.lastIndexOf("."));
-//            String newLogoFilename = UUID.randomUUID() + logoExt;
-//
-//            try {
-//                byte[] logoBytes = logoFile.getBytes();
-//                Path logoPath = Paths.get(paths + newLogoFilename);
-//                Files.write(logoPath, logoBytes);
-//                logger.info("로고 파일 저장 완료: " + newLogoFilename);
-//            } catch (IOException e) {
-//                logger.error("로고 파일 저장 오류", e);
-//            }
-//        }
-        
+        // 로고파일 저장
         saveFile(logoFile, draftIdx, true);
-        
+		// 첨부파일 저장
         saveFile(attachedFiles, draftIdx, false);
         
         // 재상신의 경우
-        logger.info("new_filename: "+new_filename);
         if(new_filename != null) {
         	for (String filename : new_filename) {
         		approvalDAO.saveExistingFiles(filename, draftIdx);
@@ -143,8 +106,7 @@ public class ApprovalService {
         if(status.equals("sd")) {
         	// 알림 요청
         	NoticeDTO noticedto = new NoticeDTO();
-        	noticedto.setFrom_idx(draftIdx); //여기바꿈
-        	//noticedto.setFrom_idx(approvalDTO.getDraft_idx());
+        	noticedto.setFrom_idx(draftIdx);
     		noticedto.setUsername(approvalDTO.getUsername());
     		noticedto.setCode_name("ml007");
     		alarmService.saveAlarm(noticedto);

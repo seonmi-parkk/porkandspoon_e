@@ -127,11 +127,11 @@
 	font-size: 1.15rem;
 }
 
-/* 공지사항 */
-.notice .cont-body {
-	
+.notice-approval {
+	height: calc(100% - 120px);
 }
 
+/* 공지사항 */
 .notice table tr {
 	border-top: 1px solid #ddd;
 	border-bottom: none;
@@ -482,6 +482,14 @@ tbody.fc-body >tr >td.fc-widget-content{
 	color: var(--bs-warning);
 }
 
+/* 반응형 */
+@media (max-width: 1440px) {
+	.approval table th:first-child,
+	.approval table td:first-child {
+		display: none;
+	}
+}
+
 </style>
 
 </head>
@@ -530,7 +538,7 @@ tbody.fc-body >tr >td.fc-widget-content{
 							</a>
 
 						</div>
-						<div class="row">
+						<div class="row notice-approval">
 							<!--  -->
 							<div class="sec notice col-6 col-lg-6">
 								<div class="sec-cont">
@@ -568,19 +576,12 @@ tbody.fc-body >tr >td.fc-widget-content{
 									</div>
 								</div>
 							</div>
-							<div class="sec col-6 col-lg-6">
+							<div class="sec approval col-6 col-lg-6">
 								<div class="sec-cont">
 									<h5 class="sec-tit">결재할 문서</h5>
 
 									<div class="cont-body">
 										<table class="list">
-											<colgroup>
-												<col>
-												<col width="30%">
-												<col>
-												<col>
-												<col>
-											</colgroup>
 											<thead>
 												<tr>
 													<th>문서번호</th>

@@ -711,12 +711,12 @@ function updateDraft(){
   
   if (isValid) {
 	  	console.log("textEaditorWrite() 실행");
-		textEaditorWrite('/draftUpdate');	
+		textEaditorWrite('/approval/update/${reapproval}');
   }else {
   	 layerPopup("필수 값을 모두 입력하세요.",'확인',false);
   } */
     checkApprLineNull();
-	textEaditorWrite('/draftUpdate/${reapproval}');	
+	textEaditorWrite('/approval/update/${reapproval}');
   
   
 	//최종 글 작성

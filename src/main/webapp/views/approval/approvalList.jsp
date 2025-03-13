@@ -144,7 +144,7 @@
 					<c:if test="${listType == 'dept'}">
 						<h4 class="menu-title">부서문서함</h4>
 					</c:if>
-					<div class="btn btn-primary full-size" onclick="location.href='/approval/write'">결재작성</div>
+					<div class="btn btn-primary full-size" onclick="location.href='/approval/writeView'">결재작성</div>
 				</section>
 				<section class="cont">
 					<div class="col-12 col-lg-12">

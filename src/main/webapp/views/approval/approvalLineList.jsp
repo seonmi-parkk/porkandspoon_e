@@ -231,7 +231,7 @@
 						<li><a href="/approval/listView/sv">임시저장 문서</a></li>
 						<li class="active"><a href="/approval/listView/line">나의 결재라인</a></li>
 					</ul>
-					<div class="btn btn-primary full-size" onclick="location.href='/approval/write'">결재작성</div>
+					<div class="btn btn-primary full-size" onclick="location.href='/approval/writeView'">결재작성</div>
 				</section>
 				<section class="cont">
 

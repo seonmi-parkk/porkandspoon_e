@@ -30,12 +30,16 @@ public class MailService {
 
 	Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 	
-	@Autowired MailDAO mailDAO;
-	@Autowired AlarmService alarmService;
-	
-	 @Value("${upload.path}") String paths;
-     @Value("${uploadTem.path}") String tem_path;
-		
+	private final MailDAO mailDAO;
+	private final AlarmService alarmService;
+
+	public MailService(MailDAO mailDAO, AlarmService alarmService) {
+		this.mailDAO = mailDAO;
+		this.alarmService = alarmService;
+	}
+
+	@Value("${upload.path}") String paths;
+	@Value("${uploadTem.path}") String tem_path;
 
 	public List<Map<String, String>> getUserList() {
 		return mailDAO.getUserList();

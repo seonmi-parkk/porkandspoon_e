@@ -10,7 +10,7 @@
 	        source : function(request, response) {
 	            $.ajax({
 	                type : 'get',
-	                url: '/json',
+	                url: '/mail/autoComplete',
 	                dataType : 'json',
 	                success : function(cont) {
 	                	const inputText = request.term.toLowerCase();
@@ -64,7 +64,7 @@
 	        classes : {
 	            'ui-autocomplete': 'highlight'
 	        },
-	        delay : 500,
+	        //delay : 500,
 	        position : { my : 'right top', at : 'right bottom' },
 	        close : function(e) {
 	            console.log("close: ",e);

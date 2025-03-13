@@ -24,16 +24,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -50,60 +41,39 @@ import kr.co.porkandspoon.service.AlarmService;
 import kr.co.porkandspoon.service.ApprovalService;
 
 @RestController
+@RequestMapping("/approval")
 public class ApprovalController {
 
 	Logger logger = LoggerFactory.getLogger(getClass());
 	
-	@Autowired ApprovalService approvalService;
-	@Autowired AlarmService alarmService;
+	private final ApprovalService approvalService;
+	private final AlarmService alarmService;
+
+	public ApprovalController(ApprovalService approvalService, AlarmService alarmService) {
+		this.approvalService = approvalService;
+		this.alarmService = alarmService;
+	}
 	
 	@Value("${upload.path}") String paths;
 	
-	//  기안문 작성페이지
-	@GetMapping(value="/approval/write")
+	// 기안문 작성페이지 뷰
+	@GetMapping(value="/writeView")
 	public ModelAndView draftView(@AuthenticationPrincipal UserDetails userDetails, HttpSession session) {
-		
 		String loginId = userDetails.getUsername();
-		logger.info("userId : "+loginId);
-		ModelAndView mav = new ModelAndView("/approval/draftWrite");  
-		UserDTO userDTO = approvalService.getUserInfo(loginId);
-		mav.addObject("userDTO", userDTO);
+		ModelAndView mav = new ModelAndView("/approval/draftWrite");
+
+		mav.addObject("userDTO", approvalService.getUserInfo(loginId));
 		mav.addObject("deptList", approvalService.getDeptList());
-		logger.info("deptDTO 두번"+userDTO.getDept().getId());
 		return mav;
 	}
-
-//	@GetMapping(value="/approvalUserInfo/{loginId}")
-//	public Map<String, Object> getUserInfo(@PathVariable String loginId, HttpSession session) {
-//		Map<String, Object> result = new HashMap<String, Object>();
-//		// check!!! 나중에 바꾸기 (java에서 가져오기(시큐리티))
-//		//String loginId = (String) session.getAttribute("loginId");
-//		logger.info("userId : "+loginId);
-//		result.put("userDTO", approvalService.getUserInfo(loginId));
-//		return result;
-//	}
 	
 	// 기안문 저장
-	@PostMapping(value="/draftWrite/{status}") 
+	@PostMapping(value="/write/{status}")
 	public Map<String, Object> draftWrite(@RequestPart("logoFile") MultipartFile[] logoFile, @RequestPart(value="attachedFiles", required = false) MultipartFile[] attachedFiles, String[] appr_user, @RequestParam("imgsJson") String imgsJson, @ModelAttribute ApprovalDTO approvalDTO, @PathVariable String status, String[] new_filename) {
-//		해당부서에 속한사람만 직영점등록이 가능하도록하는 로직
-//		if(approvalDTO.getTarget_type().equals("df002")) {
-//			
-//		}
-		
-		//logger.info("logoFile: " + logoFile);
-	//	logger.info("Files: " + Arrays.toString(files));
-		//logger.info("OriginalFilename : " + logo.getOriginalFilename());
-		logger.info("@@@***approvalDTO.getCOntent!!! : "+ approvalDTO.getContent());
-		//logger.info("new filename 받아와지나?!!!!! : "+ new_filename);
-		//logger.info("appr_user : "+ appr_user);
-		//logger.info("appr_user : "+ appr_user[0]);
-		
+
 		Map<String, Object> result = new HashMap<String, Object>();
-		
-		logger.info("fromdate체크: "+approvalDTO.getFrom_date());
-		
-		// JSON 문자열을 ImageDTO 리스트로 변환
+
+		// JSON 문자열을 FileDTO 리스트로 변환
         ObjectMapper objectMapper = new ObjectMapper();
         List<FileDTO> imgs = null;
         try {
@@ -116,53 +86,22 @@ public class ApprovalController {
         }
         
         // 변환된 이미지 리스트 확인
-        if (imgs != null && !imgs.isEmpty()) {
-            for (FileDTO img : imgs) {
-                logger.info("Original Filename: " + img.getOri_filename());
-                logger.info("New Filename: " + img.getNew_filename());
-            }
-        }
-        
-       // logger.info("imgDTO : " + approvalDTO.toString());
-       // logger.i fo("체크!! : " + approvalDTO.getFileList().get(0).getNew_filename());
-       // logger.info("체크 getUsername!! : " + approvalDTO.getUsername());
-        
-        // 이거 살려 check!!!
-        String draftIdx = approvalService.saveDraft(appr_user, approvalDTO, attachedFiles, logoFile, status, new_filename);
-        
-		/*
-		 * if(!logoFile.isEmpty()) { logger.info("로고파일 있음"); }
-		 */
-
-//        // 로고 파일 저장 처리
-//        if (logoFile != null && !logoFile.isEmpty()) {
-//            logger.info("로고 파일 있음: " + logoFile.getOriginalFilename());
-//            String oriLogoFilename = logoFile.getOriginalFilename();
-//            String logoExt = oriLogoFilename.substring(oriLogoFilename.lastIndexOf("."));
-//            String newLogoFilename = UUID.randomUUID() + logoExt;
-//
-//            try {
-//                byte[] logoBytes = logoFile.getBytes();
-//                Path logoPath = Paths.get(paths + newLogoFilename);
-//                Files.write(logoPath, logoBytes);
-//                logger.info("로고 파일 저장 완료: " + newLogoFilename);
-//            } catch (IOException e) {
-//                logger.error("로고 파일 저장 오류", e);
+//        if (imgs != null && !imgs.isEmpty()) {
+//            for (FileDTO img : imgs) {
+//                logger.info("Original Filename: " + img.getOri_filename());
+//                logger.info("New Filename: " + img.getNew_filename());
 //            }
 //        }
-
         
+        // 저장
+        String draftIdx = approvalService.saveDraft(appr_user, approvalDTO, attachedFiles, logoFile, status, new_filename);
 
-		logger.info("여기까지옴: " );
-		//approvalService.draftWrite();
 		result.put("success", true);
-		
-		 // 이거 살려 check!!!
 		result.put("draftIdx", draftIdx);
 		return result;
 	}
 	
-	@GetMapping(value="/approval/update/{draft_idx}/{reapproval}")
+	@GetMapping(value="/updateView/{draft_idx}/{reapproval}")
 	public ModelAndView draftUpdateView(@PathVariable String draft_idx, @PathVariable boolean reapproval, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
 		ModelAndView mav = new ModelAndView("/approval/draftUpdate");  
 
@@ -202,7 +141,7 @@ public class ApprovalController {
 		return returnValue ? mav : null;
 	}
 	
-	@GetMapping(value="/approval/detail/{draft_idx}")
+	@GetMapping(value="/detail/{draft_idx}")
 	public ModelAndView draftDetailView(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
 		ModelAndView mav = new ModelAndView("/approval/draftDetail");  
 		
@@ -303,7 +242,7 @@ public class ApprovalController {
 	}
 	
 	// 결재자 상태변경(결재중으로)
-	@PutMapping(value="/approval/changeStatusToRead/{draft_idx}")
+	@PutMapping(value="/changeStatusToRead/{draft_idx}")
 	public Map<String, Object> changeStatusToRead(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails) {
 		logger.info("결재자 상태변경(결재중으로)!!!!!!!!!!!!!!!!!!!!!!!!! ");
 		boolean success = false;
@@ -327,7 +266,7 @@ public class ApprovalController {
 	
 	
 //	// 기안문 저장
-//		@PostMapping(value="/draftWrite/{status}")
+//		@PostMapping(value="/write/{status}")
 //		public Map<String, Object> draftWrite(String[] appr_user, @RequestParam("imgsJson") String imgsJson, @ModelAttribute ApprovalDTO approvalDTO, MultipartFile[] files, @PathVariable String status) {
 //			logger.info("appr_user : "+ appr_user);
 //			logger.info("appr_user : "+ appr_user[0]);
@@ -375,7 +314,7 @@ public class ApprovalController {
 //		}
 		
 	@Transactional
-	@PostMapping(value="/draftUpdate/{reapproval}")
+	@PostMapping(value="/update/{reapproval}")
 	public Map<String, Object> draftUpdate(@RequestPart("logoFile") MultipartFile[] logoFile, @RequestPart(value="attachedFiles",required=false) MultipartFile[] attachedFiles, String[] appr_user, @RequestParam("imgsJson") String imgsJson, @RequestParam("deleteFiles") String deleteFilesJson, @ModelAttribute ApprovalDTO approvalDTO, @PathVariable String reapproval) {
 		logger.info("연결!!!!!!");
 		//logger.info("deleteFiles : "+ deleteFiles);
@@ -444,14 +383,14 @@ public class ApprovalController {
 		return result;
 	}
 	
-	@GetMapping(value="/approval/listView/{listType}")
+	@GetMapping(value="/listView/{listType}")
 	public ModelAndView approvalMyListView(@PathVariable String listType) {
 		ModelAndView mav = new ModelAndView("/approval/approvalList");  
 		mav.addObject("listType", listType);
 		return mav;
 	}
 
-	@GetMapping(value="/approval/list/{listType}")
+	@GetMapping(value="/list/{listType}")
 	public Map<String,Object> getApprovalMyListData(@PathVariable String listType, @RequestParam Map<String, Object> params, @AuthenticationPrincipal UserDetails userDetails) {
 		//ModelAndView mav = new ModelAndView("/approval/approvalList");  
 		logger.info("filter!!@@@@@@ : "+params.get("filter") );
@@ -465,7 +404,7 @@ public class ApprovalController {
 		return result;
 	}
 
-	@GetMapping(value="/approval/listView/line")
+	@GetMapping(value="/listView/line")
 	public ModelAndView approvalLineListView(@AuthenticationPrincipal UserDetails userDetails) {
 		ModelAndView mav = new ModelAndView("/approval/approvalLineList");  
 		String loginId = userDetails.getUsername();
@@ -474,7 +413,7 @@ public class ApprovalController {
 		return mav;
 	}
 
-	@GetMapping(value="/approval/list/line")
+	@GetMapping(value="/list/line")
 	public Map<String, Object> approvalLineList(@RequestParam Map<String, Object> params, @AuthenticationPrincipal UserDetails userDetails) {
 		String loginId = userDetails.getUsername();
 		params.put("loginId", loginId);
@@ -484,7 +423,7 @@ public class ApprovalController {
 		return result;
 	}
 	
-	@DeleteMapping(value="/approval/DeleteBookmark/{lineIdx}")
+	@DeleteMapping(value="/DeleteBookmark/{lineIdx}")
 	public Map<String, Object> deleteBookmark(@PathVariable String lineIdx, @AuthenticationPrincipal UserDetails userDetails) {
 		Map<String, Object> result = new HashMap<String, Object>();
 		String loginId = userDetails.getUsername();
@@ -493,7 +432,7 @@ public class ApprovalController {
 	}
 	
 	// 기안문 반려
-	@PutMapping(value="/approval/returnDraft") 
+	@PutMapping(value="/returnDraft")
 	public Map<String, Object> returnDraft(@ModelAttribute ApprovalDTO approvalDTO, @AuthenticationPrincipal UserDetails userDetails) {
 		logger.info("approvalDTO.getComment : "+approvalDTO.getComment());
 		approvalDTO.setUsername(userDetails.getUsername());
@@ -513,7 +452,7 @@ public class ApprovalController {
 
 	// 기안문 승인
 	@Transactional
-	@PostMapping(value="/approval/ApprovalDraft") 
+	@PostMapping(value="/ApprovalDraft")
 	public Map<String, Object> approvalDraft(@ModelAttribute ApprovalDTO approvalDTO, @AuthenticationPrincipal UserDetails userDetails) {
 		boolean success = false;
 		logger.info("approvalDTO.getComment : "+approvalDTO.getComment());
@@ -563,7 +502,7 @@ public class ApprovalController {
 	}
 	
 	// 기안문 회수
-	@PutMapping(value="/approval/recall/{draft_idx}")
+	@PutMapping(value="/recall/{draft_idx}")
 	public Map<String, Object> approvalRecall(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails){
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;
@@ -582,7 +521,7 @@ public class ApprovalController {
 	}
 	
 	// 임시저장 -> 상신
-	@PutMapping(value="/approval/changeStatusToSend/{draft_idx}")
+	@PutMapping(value="/changeStatusToSend/{draft_idx}")
 	public Map<String, Object> changeStatusToSend(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails){
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;
@@ -597,7 +536,7 @@ public class ApprovalController {
 	}
 
 	// 삭제
-	@PutMapping(value="/approval/changeStatusToDelete/{draft_idx}")
+	@PutMapping(value="/changeStatusToDelete/{draft_idx}")
 	public Map<String, Object> changeStatusToDelete(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails){
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;
@@ -619,13 +558,13 @@ public class ApprovalController {
 	}
 	
 	// 조직도 결재라인 설정 (선택한 사람 데이터 가져오기)
-	@GetMapping(value="/approval/getUserInfo/{userId}")
+	@GetMapping(value="/getUserInfo/{userId}")
 	public UserDTO getUserInfo (@PathVariable String userId){
 		UserDTO userInfo = approvalService.getUserInfo(userId);
 		return userInfo;
 	}
 	
-	@PostMapping(value="/approval/setApprLineBookmark")
+	@PostMapping(value="/setApprLineBookmark")
 	public Map<String, Object> setApprLineBookmark(
 			@RequestParam Map<String, Object> params,
             @RequestParam("approvalLines") String approvalLinesJson,

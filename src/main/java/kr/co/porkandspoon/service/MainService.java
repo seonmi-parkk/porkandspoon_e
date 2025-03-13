@@ -17,8 +17,12 @@ import kr.co.porkandspoon.dto.MenuDepth2DTO;
 public class MainService {
 
 	Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
-	
-	@Autowired MainDAO menuDAO;
+
+	private final MainDAO menuDAO;
+
+	public MainService(MainDAO menuDAO) {
+		this.menuDAO = menuDAO;
+	}
 
 	public List<MenuDTO> getMenu() {
 		List<MenuDTO> menuList = new ArrayList<>();

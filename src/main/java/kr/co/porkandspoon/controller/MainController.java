@@ -30,13 +30,21 @@ import kr.co.porkandspoon.util.security.CustomUserDetails;
 public class MainController {
 
 	Logger logger = LoggerFactory.getLogger(getClass());
-	
-	
-	@Autowired MainService mainService;
-	@Autowired MailService mailService;
-	@Autowired ApprovalService approvalService;
-	@Autowired UserDAO userDao;
-	@Autowired ResevationService reservationService;
+
+	private final MainService mainService;
+	private final MailService mailService;
+	private final ApprovalService approvalService;
+	private final UserDAO userDao;
+	private final ResevationService reservationService;
+
+	public MainController(MainService mainService, MailService mailService, ApprovalService approvalService, UserDAO userDao, ResevationService reservationService) {
+		this.mainService = mainService;
+		this.mailService = mailService;
+		this.approvalService = approvalService;
+		this.userDao = userDao;
+		this.reservationService = reservationService;
+	}
+
 	@Value("${upload.path}") String paths;
 	
 

@@ -56,7 +56,7 @@
 	<a href="/mail/listView/bk">중요메일함</a> <br/>
 	<a href="/mail/listView/del">휴지통</a> <br/>
 
-	<a href="/approval/write">기안작성</a> <br/>
+	<a href="/approval/writeView">기안작성</a> <br/>
 	<a href="/approval/listView/my">나의문서함</a> <br/>
 	<a href="/approval/listView/dept">부서문서함</a> <br/>
 

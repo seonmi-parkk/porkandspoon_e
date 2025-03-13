@@ -498,7 +498,7 @@ function sendApproval(){
     });
     
     if (isValid) {
-		textEaditorWrite('/draftWrite/sd',true);	
+		textEaditorWrite('/approval/write/sd',true);
     }else {
     	 layerPopup("필수 값을 모두 입력하세요.",'확인',false);
     }
@@ -507,7 +507,7 @@ function sendApproval(){
 // 임시 저장
 function saveTemp(){
 	document.querySelector('input[name="status"]').value = "sv";
-	textEaditorWrite('/draftWrite/sv',false);	
+	textEaditorWrite('/approval/write/sv',false);
 	
 }
 

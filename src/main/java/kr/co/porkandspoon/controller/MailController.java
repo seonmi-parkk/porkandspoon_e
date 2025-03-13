@@ -25,15 +25,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -49,16 +41,23 @@ import kr.co.porkandspoon.service.MailService;
 import kr.co.porkandspoon.util.CommonUtil;
 
 @RestController
+@RequestMapping("/mail")
 public class MailController {
 
 	Logger logger = LoggerFactory.getLogger(getClass());
 	
-	@Autowired MailService mailService;
-	@Autowired ApprovalService approvalService;
+	private final MailService mailService;
+	private final ApprovalService approvalService;
+
+	public MailController(MailService mailService, ApprovalService approvalService) {
+		this.mailService = mailService;
+		this.approvalService = approvalService;
+	}
+
 	@Value("${upload.path}") String paths;
 	
 	// 메일리스트 view
-	@GetMapping(value="/mail/listView/{listType}")
+	@GetMapping(value="/listView/{listType}")
 	public ModelAndView mailListView(@PathVariable String listType) {
 		ModelAndView mav = new ModelAndView("/mail/mailList");  
 		mav.addObject("listType", listType);
@@ -66,7 +65,7 @@ public class MailController {
 	}
 	
 	// 메일리스트 데이터가져오기
-	@GetMapping(value="/mail/list/{listType}")
+	@GetMapping(value="/list/{listType}")
 	public Map<String,Object> getMailListData(@PathVariable String listType, @RequestParam Map<String, Object> params, @AuthenticationPrincipal UserDetails userDetails) {
 		//ModelAndView mav = new ModelAndView("/approval/approvalList");  
 		//logger.info("filter!!@@@@@@ : "+params.get("filter") );
@@ -81,7 +80,7 @@ public class MailController {
 	}
 
 	// 메일작성 view
-	@GetMapping(value="/mail/write")
+	@GetMapping(value="/write")
 	public ModelAndView MailWriteView(@AuthenticationPrincipal UserDetails userDetails) {
 		ModelAndView mav = new ModelAndView("/mail/mailWrite");
 		String loginId = userDetails.getUsername();
@@ -94,7 +93,7 @@ public class MailController {
 	}
 
 	@Transactional
-	@PostMapping(value="/mail/write/{status}")
+	@PostMapping(value="/write/{status}")
 	public Map<String, Object> MailWrite(@PathVariable String status, @AuthenticationPrincipal UserDetails userDetails, @RequestPart(value="attachedFiles", required = false) MultipartFile[] attachedFiles, @RequestParam(value="existingFileIds", required = false) List<String> existingFileIds, String originalIdx, @RequestParam("imgsJson") String imgsJson, @ModelAttribute MailDTO mailDTO, @RequestParam HashSet<String> username ) {
 		Map<String, Object> result = new HashMap<String, Object>();
 		
@@ -134,7 +133,7 @@ public class MailController {
 	}
 	
 	// 메일 상세페이지 view
-	@GetMapping(value="/mail/detail/{idx}")
+	@GetMapping(value="/detail/{idx}")
 	public ModelAndView MailDetailView(@PathVariable String idx, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
 		ModelAndView mav = null;
 		String loginId = userDetails.getUsername();
@@ -221,8 +220,8 @@ public class MailController {
 	}
 	
 	// 메일작성시 수신자 자동완성
-	@GetMapping(value = "/json", produces="text/plain;charset=UTF-8")
-	public String json(Locale locale, Model model) {    
+	@GetMapping(value = "/autoComplete", produces="text/plain;charset=UTF-8")
+	public String autoComplete(Locale locale, Model model) {
 		ObjectMapper objectMapper = new ObjectMapper();
 		List<Map<String, String>> userList = mailService.getUserList();
 		String userListStr = "";
@@ -235,7 +234,7 @@ public class MailController {
 	}
 	
 	// 즐겨찾기 상태 변경
-	@PutMapping(value = "/mail/bookmark")
+	@PutMapping(value = "/bookmark")
 	public Map<String, Object> updateBookmark(@RequestParam Map<String, String> params, @AuthenticationPrincipal UserDetails userDetails) {    
 		//Map<String, Object> result = new HashMap<String, Object>();
 //		String loginId = userDetails.getUsername();
@@ -269,7 +268,7 @@ public class MailController {
 	}
 	
 	//다중 읽음 처리 기능
-	@PutMapping(value = "/mail/changeToRead")
+	@PutMapping(value = "/changeToRead")
 	public Map<String, Object> changeToRead(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails) {    
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;
@@ -280,7 +279,7 @@ public class MailController {
 	}
 	
 	//개별 안읽음 처리 기능
-	@PutMapping(value = "/mail/changeToUnread")
+	@PutMapping(value = "/changeToUnread")
 	public Map<String, Object> changeToUnread(String idx, @AuthenticationPrincipal UserDetails userDetails) {    
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;
@@ -293,7 +292,7 @@ public class MailController {
 	
 	//다중 삭제 처리 기능
 	@Transactional
-	@PutMapping(value = "/mail/moveToTrash")
+	@PutMapping(value = "/moveToTrash")
 	public Map<String, Object> moveToTrash(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails) {    
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;
@@ -329,7 +328,7 @@ public class MailController {
 	}
 	
 	//다중 영구삭제 기능
-	@PutMapping(value = "/mail/completeDelete")
+	@PutMapping(value = "/completeDelete")
 	public Map<String, Object> completeDelete(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails) {    
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;
@@ -365,7 +364,7 @@ public class MailController {
 	}
 	
 	//다중 삭제 취소 기능
-		@PutMapping(value = "/mail/restoreFromTrash")
+		@PutMapping(value = "/restoreFromTrash")
 		public Map<String, Object> restoreFromTrash(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails) {    
 			Map<String, Object> result = new HashMap<String, Object>();
 			boolean success = false;
@@ -402,7 +401,7 @@ public class MailController {
 	
 	//다중 북마크 토글 기능
 	@Transactional
-	@PutMapping(value = "/mail/toggleBookmark")
+	@PutMapping(value = "/toggleBookmark")
 	public Map<String, Object> toggleBookmark(@RequestBody Map<String, List<Map<String, String>>> params, @AuthenticationPrincipal UserDetails userDetails) {    
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;
@@ -458,7 +457,7 @@ public class MailController {
 	}
 	
 	// 전달/답장
-	@GetMapping(value="/mail/prepareMail/{status}/{idx}")
+	@GetMapping(value="/prepareMail/{status}/{idx}")
 	public ModelAndView deliverMail(@PathVariable String status, @PathVariable String idx, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response){
 		ModelAndView mav = new ModelAndView("redirect:/");
 		String loginId = userDetails.getUsername();
@@ -491,7 +490,7 @@ public class MailController {
 	}
 	
 	// update시 Filepond 초기값 설정
-	@GetMapping(value="/mail/getUploadedFiles/{idx}")
+	@GetMapping(value="/getUploadedFiles/{idx}")
 	public List<FileDTO> getUploadedFiles(@PathVariable String idx){
 		List<FileDTO> fileList = mailService.getAttachedFiles(idx);
 		
@@ -527,7 +526,7 @@ public class MailController {
 	
 	// 다시보내기
 	@Transactional
-	@PostMapping(value="/mail/resend")
+	@PostMapping(value="/resend")
 	public Map<String, Object> resend(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails){
 		Map<String, Object> result = new HashMap<String, Object>();
 		boolean success = false;

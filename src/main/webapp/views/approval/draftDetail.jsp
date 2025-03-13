@@ -391,13 +391,13 @@
 
 					<div class="col-12 col-lg-12">
 						<div class="tit-area">
-							<h5>기안 상세페이지1</h5>
+							<h5>기안 상세페이지</h5>
 						</div>
 						<div class="buttons">
 							<button class="btn btn-outline-primary" onclick="backPrev()">돌아가기</button>
 							<!-- 수정/상신: 기안자이면서, 임시저장인 경우 -->
 							<c:if test="${isDraftSender and DraftInfo.status == 'sv'}">
-								<button class="btn btn-primary" onclick="location.href='/approval/update/${DraftInfo.draft_idx}/false'">수정</button>
+								<button class="btn btn-primary" onclick="location.href='/approval/updateView/${DraftInfo.draft_idx}/false'">수정</button>
 								<button class="btn btn-primary" onclick="layerPopup('기안문을 상신하시겠습니까?', '확인', '취소', changeStatusToSend, btnCloseAct);">상신</button>
 							</c:if>
 							<!-- 회수: 기안자이면서, 결재가 진행중인(완료x) 경우 -->
@@ -406,7 +406,7 @@
 							</c:if>
 							<!-- 재기안: 기안자이면서, 회수 상태이거나 반려 상태인 경우 -->
 							<c:if test="${isDraftSender and (DraftInfo.status == 'ca' || DraftInfo.status == 're')}">
-								<button class="btn btn-primary" onclick="location.href='/approval/update/${DraftInfo.draft_idx}/true'">재기안</button>
+								<button class="btn btn-primary" onclick="location.href='/approval/updateView/${DraftInfo.draft_idx}/true'">재기안</button>
 							</c:if>
 							<!-- 반려내용: 반려 상태인 경우 -->
 							<c:if test="${DraftInfo.status == 're'}">
