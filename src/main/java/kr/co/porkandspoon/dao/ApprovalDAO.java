@@ -1,14 +1,13 @@
 package kr.co.porkandspoon.dao;
 
-import java.util.List;
-import java.util.Map;
-
-import org.apache.ibatis.annotations.Mapper;
-
 import kr.co.porkandspoon.dto.ApprovalDTO;
 import kr.co.porkandspoon.dto.DeptDTO;
 import kr.co.porkandspoon.dto.FileDTO;
 import kr.co.porkandspoon.dto.UserDTO;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface ApprovalDAO {
@@ -19,8 +18,6 @@ public interface ApprovalDAO {
 
 	Integer getMaxNumberForDate(String prefixDate);
 
-	//int fileWrite(FileDTO img);
-
 	List<DeptDTO> getDeptList();
 
 	int fileSave(FileDTO fileDto);
@@ -29,19 +26,13 @@ public interface ApprovalDAO {
 
 	int saveApprovalLine(String draftIdx, String[] appr_user, String status);
 
-	int checkExistingApprovalLine(String draftIdx);
-
 	ApprovalDTO getDraftInfo(String draft_idx);
 
 	List<ApprovalDTO> getApprLine(String draft_idx);
 
-	int checkExistingFile(String draftIdx);
-
 	List<FileDTO> getAttachedFiles(String draft_idx);
 
 	int updateDraft(ApprovalDTO approvalDTO);
-
-	int updateApprovalLine(String draftIdx, String username, int order_num);
 
 	int removeApprovalLine(String draftIdx);
 
@@ -52,7 +43,6 @@ public interface ApprovalDAO {
 	FileDTO getLogoFile(String draft_idx);
 
 	int changeApprovalLineToReturn(ApprovalDTO approvalDTO);
-
 
 	String getUserDept(String loginId);
 
@@ -72,17 +62,12 @@ public interface ApprovalDAO {
 
 	int ApprovalDraft(ApprovalDTO approvalDTO);
 
-	String isApproved(String draft_idx);
-
 	int approvalRecall(String draft_idx);
 
 	int changeStatusToApproved(String draft_idx);
 
 	int changeStatusToReturn(ApprovalDTO approvalDTO);
 
-	// check!!! 안쓰는거 같아서 일단 주석
-	//int saveExistingFiles(String[] new_filename, String draftIdx);
-	//여기서 오류가 난다면 위에거가 찐
 	int saveExistingFiles(String filename, String draftIdx);
 
 	int changeStatusToSend(String draft_idx);
@@ -104,6 +89,5 @@ public interface ApprovalDAO {
 	int haveToApproveCount(String loginId);
 
 	ApprovalDTO userApprovalInfo(ApprovalDTO approvalDTO);
-
 
 }

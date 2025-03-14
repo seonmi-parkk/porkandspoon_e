@@ -1,13 +1,12 @@
 package kr.co.porkandspoon.dao;
 
+import kr.co.porkandspoon.dto.FileDTO;
+import kr.co.porkandspoon.dto.MailDTO;
+import org.apache.ibatis.annotations.Mapper;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.ibatis.annotations.Mapper;
-
-import kr.co.porkandspoon.dto.FileDTO;
-import kr.co.porkandspoon.dto.MailDTO;
 
 @Mapper
 public interface MailDAO {
@@ -60,20 +59,14 @@ public interface MailDAO {
 
 	String getReceivedMailBookmark(String idx, String loginId);
 
-	//int chageAllToRead(Map<String, String> params);
-
 	int setDeleveryExistingImage(String mailIdx, String fileId, String originalIdx);
 
 	int savedMailCount(String loginId);
 
 	int moveReceivedToTrash(String idx, String loginId);
 
-	//int moveSentToTrash(Map<String, List<String>> params, String loginId);
-
 	int moveSentToTrash(String idx, String loginId);
 
-	// check!!! 얘는 뭐지 일단 주석
-	//int getSenderReceivers(MailDTO mailDTO);
 	List<MailDTO> getSenderReceivers(String idx);
 
 	int copyMailRow(MailDTO mailDTO);
@@ -95,13 +88,5 @@ public interface MailDAO {
 	String getSentMailUseFromDate(String idx, String loginId);
 
 	boolean changeToUnread(String idx, String loginId);
-
-
-	
-
-	//MailDTO deliverMail(String idx, String loginId);
-
-
-
 
 }

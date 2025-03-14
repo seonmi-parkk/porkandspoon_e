@@ -1,17 +1,15 @@
 package kr.co.porkandspoon.service;
 
+import kr.co.porkandspoon.dao.MainDAO;
+import kr.co.porkandspoon.dto.MenuDTO;
+import kr.co.porkandspoon.dto.MenuDepth2DTO;
+import org.slf4j.Logger;
+import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import kr.co.porkandspoon.dao.MainDAO;
-import kr.co.porkandspoon.dto.MenuDTO;
-import kr.co.porkandspoon.dto.MenuDepth2DTO;
 
 @Service
 public class MainService {
