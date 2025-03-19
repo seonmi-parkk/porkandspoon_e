@@ -76,14 +76,16 @@ function imageUploader(files, el){
             xhr.setRequestHeader(csrfHeader, csrfToken);
         },
         success: function(data){
-        $(el).summernote('insertImage', data.new_filename, function($image) {
-            $image.css('width', "100%");
-        });
-            
-        var newFilename = data.new_filename.split('/').pop(); 
-        var oriFilename = data.ori_filename;
-        
-        tempImg.push({'new_filename' : newFilename, 'ori_filename' : oriFilename}); // dto와 이름 동일해야 함
+            $(el).summernote('insertImage', data.new_filename, function($image) {
+                $image.css('width', "100%");
+            });
+
+            var newFilename = data.new_filename.split('/').pop();
+            var oriFilename = data.ori_filename;
+
+            tempImg.push({'new_filename' : newFilename, 'ori_filename' : oriFilename}); // dto와 이름 동일해야 함
+
+            console.log("newFilename: "+newFilename+" / "+"oriFilename: "+oriFilename);
         
         },error: function(e){
             console.log('에러 => ', e);

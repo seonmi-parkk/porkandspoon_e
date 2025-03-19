@@ -22,7 +22,7 @@
     <!-- 사용자 정보를 가져오는 select 문 -->
     <select id="getUserInfo" resultMap="UserMap">
         SELECT 
-            u.username, u.name, c.content AS position_content	, u.parent, d.text
+            u.username, u.name, c.content AS position_content, u.parent, d.text
         FROM 
             user u
         LEFT JOIN 
@@ -36,19 +36,6 @@
         WHERE 
             u.username = #{userId}
     </select>
-	
-	
-	
-<!-- 	<select id="getUserInfo" resultType="kr.co.porkandspoon.dto.UserDTO">
-		SELECT 
-			u.username, u.name, u.parent, d.text
-			FROM 
-				user u
-			JOIN department d
-			ON  u.parent = d.id
-			WHERE 
-				username = #{loginId}
-	</select> -->
 	
 	<select id="getDeptList" resultType="kr.co.porkandspoon.dto.DeptDTO">
 		SELECT 
@@ -64,25 +51,13 @@
 			draft
 	</select>
 	
-	
-<!-- 	INSERT INTO draft_document (document_id, title, content)
-VALUES (1, '기안문 제목', '기안문 내용')
-ON DUPLICATE KEY UPDATE
-title = VALUES(title),
-content = VALUES(content); -->
-	
-	
-	
-<!-- 	useGeneratedKeys="true"
-		keyColumn="draft_idx"
-		keyProperty="draft_idx" -->
-	
-	<insert id="saveDraft" parameterType="kr.co.porkandspoon.dto.ApprovalDTO">
+	<insert id="saveDraft"
+			parameterType="kr.co.porkandspoon.dto.ApprovalDTO"
+			useGeneratedKeys="true"
+			keyProperty="draft_idx"
+	>
 		INSERT INTO draft (username, target_type, action_type,
 			 status, dept_id, document_number
-			 <if test="draft_idx != null">
-			 ,draft_idx
-			 </if>
 			 <if test="subject != null">
 			 ,subject
 			 </if>
@@ -108,9 +83,6 @@ content = VALUES(content); -->
 		VALUES (
 			#{username}, #{target_type}, #{action_type}
 			 ,#{status}, #{dept_id}, #{document_number}
-			 <if test="draft_idx != null">
-			  , #{draft_idx}
-			 </if>
 			<if test="subject != null">
 			 , #{subject}
 			 </if>
@@ -132,17 +104,23 @@ content = VALUES(content); -->
 		  	<if test="cooper_dept_id != null">
             	,#{cooper_dept_id}
         	</if>
-		) ON DUPLICATE KEY UPDATE
-			status = VALUES(status),
-			dept_id = VALUES(dept_id),
-			subject = VALUES(subject),
-			name = VALUES(name),
-			content = VALUES(content),
-			from_date = VALUES(from_date),
-			address = VALUES(address),
-			address_detail = VALUES(address_detail),
-			cooper_dept_id = VALUES(cooper_dept_id)
+		)
 	</insert>
+
+	<update id="updateDraft" parameterType="kr.co.porkandspoon.dto.ApprovalDTO">
+		UPDATE draft SET
+			target_type = #{target_type}
+		   ,action_type = #{action_type}
+		   ,status = #{status}
+		   ,subject = #{subject}
+		   ,name = #{name}
+		   ,content = #{content}
+		   ,from_date = #{from_date}
+		   ,address = #{address}
+		   ,address_detail = #{address_detail}
+		   ,cooper_dept_id = #{cooper_dept_id}
+		WHERE draft_idx = #{draft_idx}
+	</update>
 	
 	<select id="checkExistingApprovalLine" resultType="int">
 	    SELECT COUNT(*)
@@ -160,71 +138,78 @@ content = VALUES(content); -->
 	   WHERE draft_idx = #{draft_idx} 
 	   AND username = #{username}
 	</select>
-	
-	<!-- <insert id="saveApprovalLine">
-		INSERT INTO 
-			approval_line (draft_idx, username, order_num, status, approval_date) 
+
+	<select id="getExistingApprovalLines" resultType="kr.co.porkandspoon.dto.ApprovalDTO">
+		SELECT draft_idx, username, order_num
+			FROM approval_line
+			WHERE draft_idx = #{draftIdx}
+	</select>
+
+
+
+
+	<insert id="batchInsertApprovalLines" parameterType="kr.co.porkandspoon.dto.ApprovalDTO">
+		INSERT INTO approval_line (draft_idx, username, order_num, status, approval_date)
 		VALUES
-        <choose>
-            <when test="order_num == 0 and status == 'sv'">
-                (#{draftIdx}, #{username}, #{order_num}, 'ap001', null)
-            </when>
-            <when test="order_num == 0 and status == 'sd'">
-                (#{draftIdx}, #{username}, #{order_num}, 'ap004', NOW())
-            </when>
-            <otherwise>
-                (#{draftIdx}, #{username}, #{order_num}, 'ap001', null)
-            </otherwise>
-        </choose>
-	    ON DUPLICATE KEY UPDATE 
-            username = VALUES(username),
-            status = VALUES(status),
-            approval_date = VALUES(approval_date)
-	</insert> -->
+		<foreach collection="list" item="line" index="index" separator=",">
+			<choose>
+				<when test="index == 0 and line.status == 'sd'">
+					(#{line.draft_idx}, #{line.username}, #{line.order_num}, 'ap004', NOW())
+				</when>
+				<otherwise>
+					(#{line.draft_idx}, #{line.username}, #{line.order_num}, 'ap001', null)
+				</otherwise>
+			</choose>
+		</foreach>
+	</insert>
+
+	<update id="batchUpdateApprovalLines" parameterType="java.util.List">
+		UPDATE approval_line
+		SET username = CASE
+		<foreach collection="list" item="line">
+			WHEN draft_idx = #{line.draft_idx} AND order_num = #{line.order_num} THEN #{line.username}
+		</foreach>
+		END
+		WHERE (draft_idx, order_num) IN
+		<foreach collection="list" item="line" open="(" separator="," close=")">
+			(#{line.draft_idx}, #{line.order_num})
+		</foreach>
+	</update>
+
 	<!-- upsert로 변경전 -->
-	<insert id="saveApprovalLine">
+	<insert id="saveApprovalLine" parameterType="kr.co.porkandspoon.dto.ApprovalDTO">
 		INSERT INTO approval_line (draft_idx, username, order_num, status, approval_date) 
 		values
-	    <foreach collection="appr_user" item="appritem" index="index" separator=",">
+	    <foreach collection="approvalDTO.appr_user" item="appritem" index="index" separator=",">
 	        <choose>
 	            <when test="index == 0 and status == 'sv'">
-	                (#{draftIdx}, #{appritem}, #{index}, 'ap001', null)
+	                (#{approvalDTO.draft_idx}, #{appritem}, #{index}, 'ap001', null)
 	            </when>
 	            <when test="index == 0 and status == 'sd'">
-	                (#{draftIdx}, #{appritem}, #{index}, 'ap004', NOW())
+	                (#{approvalDTO.draft_idx}, #{appritem}, #{index}, 'ap004', NOW())
 	            </when>
 	            <otherwise>
-	                (#{draftIdx}, #{appritem}, #{index}, 'ap001', null)
+	                (#{approvalDTO.draft_idx}, #{appritem}, #{index}, 'ap001', null)
 	            </otherwise>
 	        </choose>
 	    </foreach>
 	</insert>
-	
-<!-- 	<update id="updateApprovalLine">
-		UPDATE 
-			approval_line 
-		SET
-			username = #{username},
-			status = 'ap001'
-		WHERE 
-			draft_idx = #{draftIdx}
-			AND
-			order_num = #{order_num}
-	</update> -->
 
 	<insert id="removeApprovalLine">
 		DELETE FROM approval_line WHERE draft_idx = #{draft_idx}
 	</insert>
 	
-	<select id="checkExistingFile" resultType="int">
-		SELECT COUNT(*) FROM file
+	<select id="getExistingFile" resultType="String">
+		SELECT ori_filename FROM file
 			WHERE code_name = 'df000' 
 			AND pk_idx = #{draftIdx}
-			AND ori_filename = #{ori_filename}
 	</select>
-	
-	
-	
+
+	<select id="getExistingLogoFile" resultType="String">
+		SELECT ori_filename FROM file
+		WHERE code_name = 'bl001'
+		  AND pk_idx = #{draftIdx}
+	</select>
 	
 	<select id="getMaxNumberForDate" resultType="Integer">
 	    SELECT MAX(SUBSTRING(document_number, 6, 4))
@@ -232,19 +217,22 @@ content = VALUES(content); -->
 	    WHERE document_number LIKE CONCAT(#{prefixDate}, '%')
 	    FOR UPDATE
 	</select>
-	
-	<!-- 파일 정보 저장 -->
-	<!--<insert id="fileWrite" parameterType="kr.co.porkandspoon.dto.FileDTO">
-		insert into file (code_name, ori_filename, new_filename, type, pk_value)
-			values (#{code_name}, #{ori_filename}, #{new_filename}, #{type}, #{pk_value})
-	</insert>-->
-	
+
 	<insert id="fileSave" parameterType="kr.co.porkandspoon.dto.FileDTO">
 		INSERT INTO file 
 			(code_name, ori_filename, new_filename, type, pk_idx)
 		VALUES 
 			(#{code_name}, #{ori_filename}, #{new_filename}, #{type}, #{pk_idx})
 	</insert>
+
+	<delete id="deleteFile" parameterType="list">
+		<foreach collection="filesToDelete" item="fileName" separator=";">
+			DELETE FROM file
+				WHERE pk_idx = #{draftIdx}
+				AND ori_filename = #{fileName}
+				AND code_name = #{logoYn}
+		</foreach>
+	</delete>
 	
 	<insert id="saveExistingFiles">
 		INSERT INTO file (code_name, ori_filename, new_filename, type, pk_idx)
@@ -263,7 +251,8 @@ content = VALUES(content); -->
 	</select>
 	
 	<select id="getApprLine" parameterType="String" resultType="kr.co.porkandspoon.dto.ApprovalDTO">
-		SELECT a.*, c.content AS position, u.name AS user_name, d.text AS dept_name, f.new_filename AS sign, f.code_name FROM approval_line a 
+		SELECT a.*, c.content AS position, u.name AS user_name, d.text AS dept_name, f.new_filename AS sign, f.code_name
+			FROM approval_line a
 			JOIN user u ON a.username = u.username 
 			LEFT JOIN code c ON u.position = c.name
 			LEFT JOIN department d ON u.parent = d.id
@@ -286,28 +275,27 @@ content = VALUES(content); -->
 			AND pk_idx = #{draft_idx}
 	</select>
 	
-	
-	
-	
-	
-	<update id="updateDraft" parameterType="kr.co.porkandspoon.dto.ApprovalDTO">
-		UPDATE draft SET 
-			 	subject = #{subject}
-				 ,name = #{name}
-				 ,content = #{content}
-				 ,from_date = #{from_date}
-            	,address = #{address}
-            	,address_detail = #{address_detail}
-            	,cooper_dept_id = #{cooper_dept_id}
-        	 WHERE draft_idx = #{draft_idx}
-	</update>
-	
 	<delete id="deleteFiles" parameterType="kr.co.porkandspoon.dto.FileDTO">
 		DELETE FROM file
 			WHERE code_name IN ('df000','bl001')
-			AND pk_idx = #{pk_idx} 
+			AND pk_idx = #{pk_idx}
 			AND new_filename = #{new_filename}
 	</delete>
+
+	<select id="getNewFileName" parameterType="kr.co.porkandspoon.dto.FileDTO">
+		SELECT new_filename FROM file
+			WHERE code_name =
+			<choose>
+				<when test="logoYn == false">
+					'df000'
+				</when>
+				<otherwise>
+			  		'bl001'
+				</otherwise>
+			</choose>
+		  	AND pk_idx = #{fileDto.pk_idx}
+		  	AND ori_filename = #{fileDto.ori_filename}
+	</select>
 	
 	<update id="changeApprovalLineToReturn" parameterType="kr.co.porkandspoon.dto.ApprovalDTO">
 		UPDATE approval_line 

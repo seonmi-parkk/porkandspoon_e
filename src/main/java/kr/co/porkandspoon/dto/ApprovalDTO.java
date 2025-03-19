@@ -29,10 +29,12 @@ public class ApprovalDTO {
    // 이미지 리스트
    private List<FileDTO> fileList;
 
-   private String appr_user1;
-   private String appr_user2;
-   private String appr_user3;
-   private String appr_user4;
+   private List<String> appr_user;
+
+//   private String appr_user1;
+//   private String appr_user2;
+//   private String appr_user3;
+//   private String appr_user4;
 
    @DateTimeFormat(pattern = "yyyy-MM-dd")
    private LocalDate from_date;
@@ -81,7 +83,15 @@ public class ApprovalDTO {
    private int total_count;
 
    private int totalpage;
-   
+
+   public List<String> getAppr_user() {
+      return appr_user;
+   }
+
+   public void setAppr_user(List<String> appr_user) {
+      this.appr_user = appr_user;
+   }
+
    public String getParent_date() {
 		return parent_date;
 	}
@@ -258,37 +268,37 @@ public class ApprovalDTO {
       this.fileList = fileList;
    }
 
-   public String getAppr_user1() {
-      return appr_user1;
-   }
-
-   public String getAppr_user2() {
-      return appr_user2;
-   }
-
-   public String getAppr_user3() {
-      return appr_user3;
-   }
-
-   public String getAppr_user4() {
-      return appr_user4;
-   }
-
-   public void setAppr_user1(String appr_user1) {
-      this.appr_user1 = appr_user1;
-   }
-
-   public void setAppr_user2(String appr_user2) {
-      this.appr_user2 = appr_user2;
-   }
-
-   public void setAppr_user3(String appr_user3) {
-      this.appr_user3 = appr_user3;
-   }
-
-   public void setAppr_user4(String appr_user4) {
-      this.appr_user4 = appr_user4;
-   }
+//   public String getAppr_user1() {
+//      return appr_user1;
+//   }
+//
+//   public String getAppr_user2() {
+//      return appr_user2;
+//   }
+//
+//   public String getAppr_user3() {
+//      return appr_user3;
+//   }
+//
+//   public String getAppr_user4() {
+//      return appr_user4;
+//   }
+//
+//   public void setAppr_user1(String appr_user1) {
+//      this.appr_user1 = appr_user1;
+//   }
+//
+//   public void setAppr_user2(String appr_user2) {
+//      this.appr_user2 = appr_user2;
+//   }
+//
+//   public void setAppr_user3(String appr_user3) {
+//      this.appr_user3 = appr_user3;
+//   }
+//
+//   public void setAppr_user4(String appr_user4) {
+//      this.appr_user4 = appr_user4;
+//   }
 
    public String getUser_name() {
       return user_name;

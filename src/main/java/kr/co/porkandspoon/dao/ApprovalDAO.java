@@ -5,6 +5,7 @@ import kr.co.porkandspoon.dto.DeptDTO;
 import kr.co.porkandspoon.dto.FileDTO;
 import kr.co.porkandspoon.dto.UserDTO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,7 @@ public interface ApprovalDAO {
 
 	int getDraftIdx();
 
-	int saveApprovalLine(String draftIdx, String[] appr_user, String status);
+	int saveApprovalLine(ApprovalDTO approvalDTO, String status);
 
 	ApprovalDTO getDraftInfo(String draft_idx);
 
@@ -38,7 +39,9 @@ public interface ApprovalDAO {
 
 	int deleteFiles(FileDTO file);
 
-	int checkExistingFile(String draftIdx, String ori_filename);
+	List<String> getExistingFile(String draftIdx);
+
+	List<String> getExistingLogoFile(String draftIdx);
 
 	FileDTO getLogoFile(String draft_idx);
 
@@ -90,4 +93,15 @@ public interface ApprovalDAO {
 
 	ApprovalDTO userApprovalInfo(ApprovalDTO approvalDTO);
 
+	List<ApprovalDTO> getExistingApprovalLines(String draftIdx);
+
+	void batchInsertApprovalLines(List<ApprovalDTO> toInsert);
+
+	void batchUpdateApprovalLines(@Param("list") List<ApprovalDTO> toUpdate);
+
+	void deleteApprovalLines(String draftIdx, List<String> toDelete);
+
+	void deleteFiles(String draftIdx, List<String> filesToDelete, boolean logoYn);
+
+	String getNewFileName(FileDTO fileDto, boolean logoYn);
 }

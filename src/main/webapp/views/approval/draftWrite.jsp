@@ -508,7 +508,7 @@
 <script src="/resources/assets/static/js/pages/form-element-select.js"></script> -->
 
 <script>
-
+console.log("콘솔테스트");
 //FilePond를 모든 파일 입력 요소에 적용
 /* FilePond.create(document.querySelector('.filepond'));
 
