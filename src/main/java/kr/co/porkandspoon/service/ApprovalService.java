@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.io.File;
 import java.io.IOException;
@@ -92,7 +93,7 @@ public class ApprovalService {
 	}
 
 	@Transactional
-	public void updateDraft(ApprovalDTO approvalDTO, MultipartFile[] attachedFiles, MultipartFile[] logoFile, String reapproval) {
+	public void updateDraft(ApprovalDTO approvalDTO, MultipartFile[] newFiles, MultipartFile[] logoFile, String reapproval) {
 		String draftIdx = approvalDTO.getDraft_idx();
 		String status = reapproval.equals("true") ? "sd" : "sv";
 		approvalDTO.setStatus(status);
@@ -103,9 +104,11 @@ public class ApprovalService {
 		// 게시글 이미지 옮겨 저장
 		saveEditorImg(approvalDTO);
 		// 로고파일 업데이트
-		updateFile(logoFile, draftIdx, true);
+		//updateFile(logoFile, draftIdx, true);
+		saveFiles(logoFile, draftIdx, true);
 		// 첨부파일 업데이트
-		updateFile(attachedFiles, draftIdx, false);
+		//updateFile(newFiles, draftIdx, false);
+		saveFiles(newFiles, draftIdx, false);
 	}
 
 	public ApprovalDTO getDraftInfo(String draft_idx) {
@@ -131,12 +134,13 @@ public class ApprovalService {
 	@Transactional
 	public void updateApprovalLines(ApprovalDTO approvalDTO) {
 		String draftIdx = approvalDTO.getDraft_idx();
-		// 기존 결재라인 조회
-		List<ApprovalDTO> existingApprovalLines = approvalDAO.getExistingApprovalLines(draftIdx);
+		List<String> appr_user = approvalDTO.getAppr_user();
+
+		// 기존 결재라인 삭제
+		approvalDAO.deleteApprovalLines(draftIdx);
 
 		// 새로운 결재라인 리스트 생성
 		List<ApprovalDTO> newApprovalLines = new ArrayList<>();
-		List<String> appr_user = approvalDTO.getAppr_user();
 		for (int i = 0; i < appr_user.size(); i++) {
 			ApprovalDTO line = new ApprovalDTO();
 			line.setDraft_idx(draftIdx);
@@ -145,88 +149,59 @@ public class ApprovalService {
 			newApprovalLines.add(line);
 		}
 
-		// 기존 결재라인이 존재하는 경우
-		if(!existingApprovalLines.isEmpty()) {
-			// 기존 결재라인과 비교하여 INSERT / UPDATE / DELETE 결정
-			List<ApprovalDTO> toInsert = new ArrayList<>();
-			List<ApprovalDTO> toUpdate = new ArrayList<>();
-			List<String> toDelete = new ArrayList<>();
+		if(!newApprovalLines.isEmpty()) {
+			approvalDAO.batchInsertApprovalLines(newApprovalLines);
 
-			Map<String, ApprovalDTO> existingMap = existingApprovalLines.stream()
-					.collect(Collectors.toMap(ApprovalDTO::getUsername, line -> line));
-
-			for (ApprovalDTO newLine : newApprovalLines) {
-				if (existingMap.containsKey(newLine.getUsername())) {
-					ApprovalDTO existingLine = existingMap.get(newLine.getUsername());
-					if (!existingLine.equals(newLine)) { // 상태가 변경되었거나 순서가 다르면 업데이트
-						toUpdate.add(newLine);
-					}
-					existingMap.remove(newLine.getUsername()); // 기존 목록에서 삭제
-				} else {
-					toInsert.add(newLine); // 기존에 없던 결재라인은 삽입
-				}
-			}
-
-			// 남아있는 기존 결재자 목록 중 삭제할 대상
-			toDelete.addAll(existingMap.keySet());
-
-			// 결재라인 변경 사항을 Batch로 적용
-			if (!toInsert.isEmpty()) approvalDAO.batchInsertApprovalLines(toInsert);
-			if (toUpdate != null && !toUpdate.isEmpty()) approvalDAO.batchUpdateApprovalLines(toUpdate);
-			if (!toDelete.isEmpty()) approvalDAO.deleteApprovalLines(draftIdx, toDelete);
-		}else {
-			// 기존 결재라인이 존재하지 않는 경우
-			if (!newApprovalLines.isEmpty()) approvalDAO.batchInsertApprovalLines(newApprovalLines);
-		}
-
-	}
-
-	@Transactional
-	public void updateFile(MultipartFile[] files, String draftIdx, boolean logoYn) {
-		// 기존 파일 조회
-		List<String> originalFileNames = null;
-		if(logoYn) {
-			// 로고파일일 경우
-			originalFileNames = approvalDAO.getExistingLogoFile(draftIdx);
-		}else{
-			// 일반첨부파일일 경우
-			originalFileNames = approvalDAO.getExistingFile(draftIdx);
-		}
-
-		// 새로운 파일 리스트 생성
-		List<String> newFileNames = new ArrayList<>();
-
-		if(files != null && Arrays.stream(files).anyMatch(file -> !file.isEmpty())) {
-			logger.info("첨부 파일수:"+ files.length);
-			for(MultipartFile file : files) {
-				newFileNames.add(file.getOriginalFilename());
-			}
-		}
-
-		// 기존 파일명과 비교하여 INSERT / DELETE 결정
-		// insert
-		List<String> filesToInsert = new ArrayList<>(newFileNames);
-		filesToInsert.removeAll(originalFileNames); // 새 파일리스트에서 기존 파일 제외
-		// delete
-		List<String> filesToDelete = new ArrayList<>(originalFileNames);
-		filesToDelete.removeAll(newFileNames); // 기존 리스트에서 새 파일 제외
-
-		// 파일 변경 사항 적용
-		if (!filesToDelete.isEmpty()) {
-			for(String file : filesToDelete) {
-				// 파일 삭제
-				deleteFile(file, draftIdx, logoYn);
-			}
-		}
-		if (!filesToInsert.isEmpty()) {
-			for (MultipartFile file : files) {
-				if (filesToInsert.contains(file.getOriginalFilename())) {
-					// 파일 저장
-					saveFile(file, draftIdx, logoYn);
-				}
-			}
 		}
 	}
+
+//	@Transactional
+//	public void updateFile(MultipartFile[] files, String draftIdx, boolean logoYn) {
+//		// 기존 파일 조회
+//		List<String> originalFileNames = null;
+//		if(logoYn) {
+//			// 로고파일일 경우
+//			originalFileNames = approvalDAO.getExistingLogoFile(draftIdx);
+//		}else{
+//			// 일반첨부파일일 경우
+//			originalFileNames = approvalDAO.getExistingFile(draftIdx);
+//		}
+//
+//		// 새로운 파일 리스트 생성
+//		List<String> newFileNames = new ArrayList<>();
+//
+//		if(files != null && Arrays.stream(files).anyMatch(file -> !file.isEmpty())) {
+//			logger.info("첨부 파일수:"+ files.length);
+//			for(MultipartFile file : files) {
+//				newFileNames.add(file.getOriginalFilename());
+//			}
+//		}
+//
+//		// 기존 파일명과 비교하여 INSERT / DELETE 결정
+//		// insert
+//		List<String> filesToInsert = new ArrayList<>(newFileNames);
+//		filesToInsert.removeAll(originalFileNames); // 새 파일리스트에서 기존 파일 제외
+//		// delete
+//		List<String> filesToDelete = new ArrayList<>(originalFileNames);
+//		filesToDelete.removeAll(newFileNames); // 기존 리스트에서 새 파일 제외
+//
+//		// 파일 변경 사항 적용
+//		if (!filesToDelete.isEmpty()) {
+//			for(String file : filesToDelete) {
+//				// 파일 삭제
+//				deleteFile(file, draftIdx, logoYn);
+//			}
+//		}
+//		if (!filesToInsert.isEmpty()) {
+//			for (MultipartFile file : files) {
+//				if (filesToInsert.contains(file.getOriginalFilename())) {
+//					// 파일 저장
+//					saveFile(file, draftIdx, logoYn);
+//				}
+//			}
+//		}
+//	}
+
 
 	@Transactional
 	public void saveFiles(MultipartFile[] files, String draftIdx, boolean logoYn) {
@@ -271,18 +246,18 @@ public class ApprovalService {
 	@Transactional
 	public void deleteFile(String filename, String draftIdx, boolean logoYn) {
 		FileDTO fileDto = new FileDTO();
-		fileDto.setOri_filename(filename);
+		fileDto.setNew_filename(filename);
 		fileDto.setPk_idx(draftIdx);
 
 		// newFileName 가져오기
-		String newFileName = approvalDAO.getNewFileName(fileDto,logoYn);
-		fileDto.setNew_filename(newFileName);
+		//String newFileName = approvalDAO.getNewFileName(fileDto,logoYn);
+		//fileDto.setNew_filename(newFileName);
 		// 데이터베이스에서 파일 정보 삭제
 		approvalDAO.deleteFiles(fileDto);
 
 		// 파일 삭제 (서버 폴더에서)
 		try {
-			File fileToDelete = new File(paths + newFileName);
+			File fileToDelete = new File(paths + filename);
 			if (fileToDelete.exists()) {
 				boolean deleted = fileToDelete.delete();  // 파일 삭제
 			}
@@ -334,20 +309,22 @@ public class ApprovalService {
 
 	public void deleteFiles(List<FileDTO> deleteFiles, String draftIdx) {
 		for (FileDTO file : deleteFiles) {
-			String filePath = file.getNew_filename();
-			// 파일 삭제 (서버 폴더에서)
-			try {
-				File fileToDelete = new File(paths + filePath);
-				if (fileToDelete.exists()) {
-					boolean deleted = fileToDelete.delete();  // 파일 삭제
+			if(file != null) {
+				String filePath = file.getNew_filename();
+				// 파일 삭제 (서버 폴더에서)
+				try {
+					File fileToDelete = new File(paths + filePath);
+					if (fileToDelete.exists()) {
+						boolean deleted = fileToDelete.delete();  // 파일 삭제
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
 
-			// 데이터베이스에서 파일 정보 삭제
-			file.setPk_idx(draftIdx);
-			approvalDAO.deleteFiles(file);
+				// 데이터베이스에서 파일 정보 삭제
+				file.setPk_idx(draftIdx);
+				approvalDAO.deleteFiles(file);
+			}
 		}
 
 	}
@@ -368,10 +345,19 @@ public class ApprovalService {
 	}
 
 	// 기안문 반려
+	@Transactional
 	public boolean returnDraft(ApprovalDTO approvalDTO) {
 		approvalDTO.setApproval_date(CreateNowDateTime());
 		int approvalRow = approvalDAO.changeApprovalLineToReturn(approvalDTO);
 		int draftRow = approvalDAO.changeStatusToReturn(approvalDTO);
+
+		// 결재 반려 알림
+		NoticeDTO noticedto = new NoticeDTO();
+		noticedto.setFrom_idx(approvalDTO.getDraft_idx());
+		noticedto.setUsername(approvalDTO.getUsername());
+		noticedto.setCode_name("ml009");
+		alarmService.saveAlarm(noticedto);
+
 		return approvalRow > 0 && draftRow >0 ? true : false;
 	}
 
@@ -489,4 +475,33 @@ public class ApprovalService {
 		return approvalDAO.userApprovalInfo(approvalDTO);
 	}
 
+	public Map<String, Object> getDraftUpdateViewData(String draftIdx, String loginId, boolean reapproval) {
+		// 기안자 여부
+		boolean isDraftSender = isDraftSender(draftIdx, loginId);
+		boolean permission = false;
+		String message = "";
+		// 전송 메세지
+		if (!isDraftSender) {
+			message = "기안문 수정권한이 없습니다.";
+		}
+		// 수정인 경우(재기안x)
+		if (!reapproval) {
+			// 임시저장 상태인지 체크
+			boolean isSaved = getDraftStatus(draftIdx).equals("sv");
+			permission = isDraftSender && isSaved;
+			// 상신인 경우
+			if (!isSaved) {
+				message = "상신된 기안문은 수정할 수 없습니다.";
+			}
+		} else {
+		// 재기안인 경우
+			permission = isDraftSender;
+		}
+
+		Map<String, Object> result = new HashMap<>();
+		result.put("permission", permission);
+		result.put("message", message);
+
+		return result;
+	}
 }

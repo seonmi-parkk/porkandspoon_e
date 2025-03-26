@@ -1,5 +1,6 @@
 package kr.co.porkandspoon.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.co.porkandspoon.dto.ApprovalDTO;
@@ -11,6 +12,10 @@ import kr.co.porkandspoon.service.ApprovalService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +24,12 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/approval")
@@ -58,9 +64,11 @@ public class ApprovalController {
 		Map<String, Object> result = new HashMap<String, Object>();
 
 		// JSON 문자열을 FileDTO 리스트로 변환
-		ApprovalDTO apprDTO = jsonToFileDtoList(imgsJson, approvalDTO);
+		List<FileDTO> fileList = jsonToFileDtoList(imgsJson);
+		// 변환한 FileDTO 리스트를 approvalDTO에 설정
+		approvalDTO.setFileList(fileList);
 		// 저장
-        String draftIdx = approvalService.saveDraft(apprDTO, attachedFiles, logoFile, status, new_filename);
+        String draftIdx = approvalService.saveDraft(approvalDTO, attachedFiles, logoFile, status, new_filename);
 		result.put("success", true);
 		result.put("draftIdx", draftIdx);
 		return result;
@@ -69,64 +77,67 @@ public class ApprovalController {
 	// 기안문 수정 뷰
 	@GetMapping(value="/updateView/{draft_idx}/{reapproval}")
 	public ModelAndView draftUpdateView(@PathVariable String draft_idx, @PathVariable boolean reapproval, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
-		ModelAndView mav = new ModelAndView("/approval/draftUpdate");  
+		ModelAndView mav = new ModelAndView("/approval/draftUpdate");
 
 		String loginId = userDetails.getUsername();
+		// 수정 권한 및 전달 메세지 처리
+		Map<String, Object> result = approvalService.getDraftUpdateViewData(draft_idx, loginId, reapproval);
 
-		// 기안자 여부
-		boolean permission = false;
-		boolean isDraftSender = approvalService.isDraftSender(draft_idx,loginId);
-		// 전송 메세지
-		String message = "";
-		if(!isDraftSender) {
-			message = "기안문 수정권한이 없습니다.";
+		if(Boolean.TRUE.equals(result.get("permission"))) {
+			// 재기안 or 임시저장 수정 여부
+			mav.addObject("reapproval", reapproval);
+			// 기안 유저 정보
+			mav.addObject("userDTO", approvalService.getUserInfo(loginId));
 		}
-		
-		// 수정인 경우(재기안x)
-		if(!reapproval) {
-			// 임시저장 상태인지 체크
-			boolean isSavedDraft =  approvalService.getDraftStatus(draft_idx).equals("sv");
-			permission = isDraftSender && isSavedDraft;
-			
-			if(!isSavedDraft) {
-				message = "상신된 기안문은 수정할 수 없습니다.";
-			}
-			mav.addObject("reapproval", false);
-		}else {
-			// 재기안의 경우
-			permission = isDraftSender;
-			mav.addObject("reapproval", true);
-		}
-		
-		// 기안 유저 정보
-		mav.addObject("userDTO", approvalService.getUserInfo(loginId));
-		
-		// 상세페이지 리턴 여부
-		boolean returnValue = checkDraftPermission(draft_idx, response, mav, permission, message);
+
+		// 권한 여부에 따른 데이터, 메세지 인코딩 처리
+		boolean returnValue = checkDraftPermission(draft_idx, response, mav, (boolean) result.get("permission"), (String) result.get("message"));
 		return returnValue ? mav : null;
 	}
 
 	// 기안문 수정
 	@Transactional
 	@PostMapping(value="/update/{reapproval}")
-	public Map<String, Object> draftUpdate(@RequestPart("logoFile") MultipartFile[] logoFile, @RequestPart(value="attachedFiles",required=false) MultipartFile[] attachedFiles, @RequestParam("imgsJson") String imgsJson, @RequestParam("deleteFiles") String deleteFilesJson, @ModelAttribute ApprovalDTO approvalDTO, @PathVariable String reapproval) {
-		// deleteFilesJson을 List<FileDTO>로 변환
-		ObjectMapper objectMapper = new ObjectMapper();
-		List<FileDTO> deleteFiles = null;
-		try {
-			deleteFiles = objectMapper.readValue(deleteFilesJson, new TypeReference<List<FileDTO>>(){});
-		} catch (Exception e) {
-			e.printStackTrace();
+	public Map<String, Object> draftUpdate(@RequestParam("deletedFiles") String deletedFilesJson,@RequestPart(value="existingLogoFileId", required=false) String existingLogoFileId, @RequestPart(value="logoFile", required = false) MultipartFile[] logoFile, @RequestPart(value="newAttachedFiles",required=false) MultipartFile[] newFiles, @RequestParam("existingFileJson") String existingFileJson, @RequestParam("imgsJson") String imgsJson, @ModelAttribute ApprovalDTO approvalDTO, @PathVariable String reapproval) {
+		logger.info("deletedFileIdsJson!! : " + deletedFilesJson);
+
+		String draftIdx = approvalDTO.getDraft_idx();
+		MultipartFile[] newLogoFile = null;
+		// 로고파일
+		if (logoFile != null && logoFile.length > 0) {
+			// 기존 로고 삭제
+			List<FileDTO> logoDtoList = new ArrayList<>();
+			FileDTO logoFileDto = approvalService.getLogoFile(draftIdx);
+			logger.info("logoFileDto: {}", logoFileDto);
+			logoDtoList.add(logoFileDto);
+			approvalService.deleteFiles(logoDtoList, draftIdx);
 		}
-		// 삭제한 파일 처리
-		approvalService.deleteFiles(deleteFiles, approvalDTO.getDraft_idx());
+
+		/* 일반 첨부파일 */
+		// 삭제할 기존 첨부파일 (json -> List<String> 변환)
+		ObjectMapper objectMapper = new ObjectMapper();
+		List<String> deletedFiles = new ArrayList<>();
+		try {
+			deletedFiles = objectMapper.readValue(deletedFilesJson, new TypeReference<List<String>>() {});
+		} catch (JsonProcessingException e) {
+			throw new RuntimeException("파일 ID JSON 파싱 실패", e);
+		}
+
+		// 삭제 처리
+		for (String file : deletedFiles) {
+			approvalService.deleteFile(file, draftIdx,false);
+		}
+
+		// 새로 업로드된 파일 저장
 		// JSON 문자열을 FileDTO 리스트로 변환
-		ApprovalDTO apprDTO = jsonToFileDtoList(imgsJson, approvalDTO);
-		approvalService.updateDraft(apprDTO, attachedFiles, logoFile, reapproval);
+		List<FileDTO> fileList = jsonToFileDtoList(imgsJson);
+		// 변환한 FileDTO 리스트를 approvalDTO에 설정
+		approvalDTO.setFileList(fileList);
+		approvalService.updateDraft(approvalDTO, newFiles, logoFile, reapproval);
 
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("success", true);
-		result.put("draftIdx", apprDTO.getDraft_idx());
+		result.put("draftIdx", approvalDTO.getDraft_idx());
 		return result;
 	}
 
@@ -178,12 +189,13 @@ public class ApprovalController {
 			message = "삭제된 기안문입니다.";
 		}
 		
+
 		// 상세페이지 리턴 여부
 		boolean returnValue = checkDraftPermission(draft_idx, response, mav, permission, message);
 		return returnValue ? mav : null;
 	}
 	
-	// 기안문 열람권한 체크후 이동
+	// 기안문 열람권한 여부에 따른 데이터 처리 or 접근불가 메세지 인코딩 처리
 	boolean checkDraftPermission(String draft_idx, HttpServletResponse response, ModelAndView mav, boolean permission, String message) {
 		boolean returnValue = false;
 		if(permission) {
@@ -273,13 +285,6 @@ public class ApprovalController {
 	public Map<String, Object> returnDraft(@ModelAttribute ApprovalDTO approvalDTO, @AuthenticationPrincipal UserDetails userDetails) {
 		approvalDTO.setUsername(userDetails.getUsername());
 		boolean success = approvalService.returnDraft(approvalDTO);
-		
-		// 결재 반려 알림
-		NoticeDTO noticedto = new NoticeDTO();
-		noticedto.setFrom_idx(approvalDTO.getDraft_idx());
-		noticedto.setUsername(approvalDTO.getUsername());
-		noticedto.setCode_name("ml009");
-		alarmService.saveAlarm(noticedto);
 		
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("success",success);
@@ -420,19 +425,39 @@ public class ApprovalController {
 		return result;
 	}
 
+	// filePond 이미지 미리보기
+	@GetMapping("/filepond/{new_filename}")
+	public ResponseEntity<Resource> getFile(@PathVariable String new_filename) {
+		logger.info("filePond 이미지 미리보기 요청: {}", new_filename);
+
+		Path path = Paths.get(paths + "/" + new_filename);
+		Resource resource = new FileSystemResource(path.toFile());
+
+        String contentType = null;
+        try {
+            contentType = Files.probeContentType(path);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        if (contentType == null) contentType = "application/octet-stream"; // fallback
+
+		return ResponseEntity.ok()
+				.contentType(MediaType.parseMediaType(contentType))
+				.body(resource);
+	}
+
 	// JSON 문자열을 FileDTO 리스트로 변환
-	public ApprovalDTO jsonToFileDtoList(String imgsJson, ApprovalDTO approvalDTO) {
+	public List<FileDTO> jsonToFileDtoList(String imgsJson) {
 		ObjectMapper objectMapper = new ObjectMapper();
-		List<FileDTO> imgs = null;
+		List<FileDTO> fileDTOList = null;
 		try {
-			// TypeFactory를 사용하여 제네릭 타입을 처리하여 변환
-			imgs = objectMapper.readValue(imgsJson, objectMapper.getTypeFactory().constructCollectionType(List.class, FileDTO.class));
-			approvalDTO.setFileList(imgs);  // 변환한 이미지 리스트를 approvalDTO에 설정
+			fileDTOList = objectMapper.readValue(imgsJson, objectMapper.getTypeFactory().constructCollectionType(List.class, FileDTO.class));
+			//fileDTOList = objectMapper.readValue(imgsJson, new TypeReference<List<FileDTO>>(){});
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.info("JSON 문자열을 FileDTO 리스트 변환 실패");
 		}
-		return approvalDTO;
+		return fileDTOList;
 	}
 
 }

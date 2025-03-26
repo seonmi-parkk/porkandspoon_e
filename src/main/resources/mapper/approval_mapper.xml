@@ -195,7 +195,7 @@
 	    </foreach>
 	</insert>
 
-	<insert id="removeApprovalLine">
+	<insert id="deleteApprovalLines">
 		DELETE FROM approval_line WHERE draft_idx = #{draft_idx}
 	</insert>
 	

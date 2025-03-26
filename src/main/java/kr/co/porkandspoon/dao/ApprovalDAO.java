@@ -99,7 +99,7 @@ public interface ApprovalDAO {
 
 	void batchUpdateApprovalLines(@Param("list") List<ApprovalDTO> toUpdate);
 
-	void deleteApprovalLines(String draftIdx, List<String> toDelete);
+	void deleteApprovalLines(String draftIdx);
 
 	void deleteFiles(String draftIdx, List<String> filesToDelete, boolean logoYn);
 

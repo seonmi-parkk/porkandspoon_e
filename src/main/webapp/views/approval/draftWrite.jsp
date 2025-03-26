@@ -455,57 +455,25 @@
 
 <!-- 부트스트랩 -->
 <script src="/resources/assets/compiled/js/app.js"></script>
-
 <!-- select  -->
-<script
-	src="/resources/assets/extensions/choices.js/public/assets/scripts/choices.js"></script>
+<script src="/resources/assets/extensions/choices.js/public/assets/scripts/choices.js"></script>
 <script src="/resources/assets/static/js/pages/form-element-select.js"></script>
-
-<!-- 파일업로더 -->
-<!-- <script
-	src="/resources/assets/extensions/filepond-plugin-file-validate-size/filepond-plugin-file-validate-size.min.js"></script>
-<script
-	src="/resources/assets/extensions/filepond-plugin-file-validate-type/filepond-plugin-file-validate-type.min.js"></script>
-<script
-	src="/resources/assets/extensions/filepond-plugin-image-crop/filepond-plugin-image-crop.min.js"></script>
-<script
-	src="/resources/assets/extensions/filepond-plugin-image-exif-orientation/filepond-plugin-image-exif-orientation.min.js"></script>
-<script
-	src="/resources/assets/extensions/filepond-plugin-image-filter/filepond-plugin-image-filter.min.js"></script>
-<script
-	src="/resources/assets/extensions/filepond-plugin-image-preview/filepond-plugin-image-preview.min.js"></script>
-<script
-	src="/resources/assets/extensions/filepond-plugin-image-resize/filepond-plugin-image-resize.min.js"></script>
-<script src="/resources/assets/extensions/filepond/filepond.js"></script>
-<script src="/resources/assets/static/js/pages/filepond.js"></script> -->
-
 <!-- FilePond JavaScript -->
 <script src="https://unpkg.com/filepond@^4/dist/filepond.js"></script>
-
 <!-- jQuery -->
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>
-
 <!-- jstree -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
 
-	
 <script src='/resources/js/common.js'></script>
 <!-- summer note -->
 <!-- <script src='/resources/js/textEaditor.js'></script> -->
-
 <!-- 다음검색 -->
 <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <script src='/resources/js/approval.js'></script>
-
 <!-- 조직도 js -->
-<!-- <script src='/resources/js/common.js'></script> -->
 <script src='/resources/js/charjstree.js'></script>
-
-<!-- select  -->
-<!-- <script
-	src="/resources/assets/extensions/choices.js/public/assets/scripts/choices.js"></script>
-<script src="/resources/assets/static/js/pages/form-element-select.js"></script> -->
 
 <script>
 console.log("콘솔테스트");
