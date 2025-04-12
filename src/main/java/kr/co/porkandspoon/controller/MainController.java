@@ -70,8 +70,6 @@ public class MainController {
 		Map<String, Object> result = new HashMap<String, Object>();
 		List<MenuDTO> menuList = mainService.getMenu();
 		result.put("menuList", menuList);
-		CustomUserDetails userDetails = (CustomUserDetails)SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		result.put("userRole",userDetails.getAuthorities()); // 권한
 		return result;
 	}
 
