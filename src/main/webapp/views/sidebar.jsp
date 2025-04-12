@@ -25,9 +25,6 @@
 		data:{},
 		datatype:'JSON',
 		success:function(data){
-			//console.log(data.menuList);
-			//console.log("data.userRole.authority ::: ",data.userRole[0].authority.split('_')[1]);
-			authority = data.userRole[0].authority.split('_')[1];
 			drawMenu(data.menuList);
 		},
 		error:function(e){
@@ -67,6 +64,5 @@
 
 	     $('.sidebar-menu .menu').append(content);
 	}
-	
 
 </script>
