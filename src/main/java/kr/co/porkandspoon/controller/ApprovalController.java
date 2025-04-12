@@ -59,6 +59,7 @@ public class ApprovalController {
 	}
 	
 	// 기안문 저장
+	@Transactional
 	@PostMapping(value="/write/{status}")
 	public Map<String, Object> saveDraft(@RequestPart("logoFile") MultipartFile[] logoFile, @RequestPart(value="attachedFiles", required = false) MultipartFile[] attachedFiles, @RequestParam("imgsJson") String imgsJson, @ModelAttribute ApprovalDTO approvalDTO, @PathVariable String status, String[] new_filename) {
 		Map<String, Object> result = new HashMap<String, Object>();
@@ -98,46 +99,17 @@ public class ApprovalController {
 	// 기안문 수정
 	@Transactional
 	@PostMapping(value="/update/{reapproval}")
-	public Map<String, Object> draftUpdate(@RequestParam("deletedFiles") String deletedFilesJson,@RequestPart(value="existingLogoFileId", required=false) String existingLogoFileId, @RequestPart(value="logoFile", required = false) MultipartFile[] logoFile, @RequestPart(value="newAttachedFiles",required=false) MultipartFile[] newFiles, @RequestParam("existingFileJson") String existingFileJson, @RequestParam("imgsJson") String imgsJson, @ModelAttribute ApprovalDTO approvalDTO, @PathVariable String reapproval) {
-		logger.info("deletedFileIdsJson!! : " + deletedFilesJson);
-
-		String draftIdx = approvalDTO.getDraft_idx();
-		MultipartFile[] newLogoFile = null;
-		// 로고파일
-		if (logoFile != null && logoFile.length > 0) {
-			// 기존 로고 삭제
-			List<FileDTO> logoDtoList = new ArrayList<>();
-			FileDTO logoFileDto = approvalService.getLogoFile(draftIdx);
-			logger.info("logoFileDto: {}", logoFileDto);
-			logoDtoList.add(logoFileDto);
-			approvalService.deleteFiles(logoDtoList, draftIdx);
-		}
-
-		/* 일반 첨부파일 */
-		// 삭제할 기존 첨부파일 (json -> List<String> 변환)
-		ObjectMapper objectMapper = new ObjectMapper();
-		List<String> deletedFiles = new ArrayList<>();
-		try {
-			deletedFiles = objectMapper.readValue(deletedFilesJson, new TypeReference<List<String>>() {});
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException("파일 ID JSON 파싱 실패", e);
-		}
-
-		// 삭제 처리
-		for (String file : deletedFiles) {
-			approvalService.deleteFile(file, draftIdx,false);
-		}
-
-		// 새로 업로드된 파일 저장
+	public Map<String, Object> draftUpdate(@RequestParam("deletedFiles") String deletedFilesJson, @RequestPart(value="logoFile", required = false) MultipartFile[] logoFile, @RequestPart(value="newAttachedFiles",required=false) MultipartFile[] newFiles, @RequestParam("imgsJson") String imgsJson, @ModelAttribute ApprovalDTO approvalDTO, @PathVariable String reapproval) {
+		/* 텍스트에디터 이미지 처리*/
 		// JSON 문자열을 FileDTO 리스트로 변환
 		List<FileDTO> fileList = jsonToFileDtoList(imgsJson);
 		// 변환한 FileDTO 리스트를 approvalDTO에 설정
 		approvalDTO.setFileList(fileList);
-		approvalService.updateDraft(approvalDTO, newFiles, logoFile, reapproval);
+		String draftIdx = approvalService.draftUpdate(deletedFilesJson,logoFile,newFiles,imgsJson,approvalDTO,reapproval);
 
 		Map<String, Object> result = new HashMap<String, Object>();
 		result.put("success", true);
-		result.put("draftIdx", approvalDTO.getDraft_idx());
+		result.put("draftIdx", draftIdx);
 		return result;
 	}
 

@@ -12,167 +12,7 @@
 			</div>
 		</div>
 		<div class="sidebar-menu">
-			<ul class="menu">
-				<!-- <li class="sidebar-item active "><a href="index.html"
-					class='sidebar-link'> <i class="bi bi-envelope-fill"></i> <span>사내메일</span>
-				</a></li>
-
-				<li class="sidebar-item"><a href="#" class='sidebar-link'>
-						<i class="bi bi-chat-left-dots-fill"></i> <span>메신저</span>
-				</a></li>
-
-				<li class="sidebar-item"><a href="#" class='sidebar-link'>
-						<i class="bi bi-calendar-check-fill"></i> <span>캘린더</span>
-				</a></li>
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-clock-fill"></i> <span>예약</span>
-				</a>
-
-					<ul class="submenu ">
-						<li class="submenu-item"><a href="layout-default.html"
-							class="submenu-link">회의실 예약</a></li>
-						<li class="submenu-item"><a
-							href="layout-vertical-1-column.html" class="submenu-link">물품
-								예약</a></li>
-						<li class="submenu-item"><a
-							href="layout-vertical-navbar.html" class="submenu-link">자원 관리</a>
-						</li>
-					</ul></li>
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-chat-left-text-fill"></i>
-						<span>게시판</span>
-				</a>
-
-					<ul class="submenu ">
-						<li class="submenu-item"><a href="form-element-input.html"
-							class="submenu-link">게시판</a></li>
-
-						<li class="submenu-item  "><a
-							href="form-element-input-group.html" class="submenu-link">라이브러리</a>
-						</li>
-
-						<li class="submenu-item  "><a href="form-element-select.html"
-							class="submenu-link">맛집 지도</a></li>
-
-						<li class="submenu-item  "><a href="form-element-radio.html"
-							class="submenu-link">투표</a></li>
-					</ul></li>
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-chat-left-text-fill"></i>
-						<span>프로젝트</span>
-				</a>
-					<ul class="submenu ">
-						<li class="submenu-item  "><a
-							href="form-validation-parsley.html" class="submenu-link">프로젝트
-								리스트</a></li>
-						<li class="submenu-item  "><a
-							href="form-validation-parsley.html" class="submenu-link">프로젝트
-								등록/수정</a></li>
-					</ul></li>
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-clipboard-check-fill"></i>
-						<span>문서함</span>
-				</a>
-
-					<ul class="submenu ">
-						<li class="submenu-item  "><a href="form-editor-quill.html"
-							class="submenu-link">결재 작성</a></li>
-						<li class="submenu-item  "><a href="form-editor-tinymce.html"
-							class="submenu-link">나의 문서함</a></li>
-						<li class="submenu-item  "><a
-							href="form-editor-ckeditor.html" class="submenu-link">부서문서함</a></li>
-					</ul></li>
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-people-fill"></i> <span>인사관리</span>
-				</a>
-
-					<ul class="submenu ">
-						<li class="submenu-item  "><a href="table-datatable.html"
-							class="submenu-link">직원리스트</a></li>
-						<li class="submenu-item  "><a
-							href="table-datatable-jquery.html" class="submenu-link">직원 등록</a>
-						</li>
-						<li class="submenu-item  "><a
-							href="table-datatable-jquery.html" class="submenu-link">인사 이동</a>
-						</li>
-						<li class="submenu-item  "><a
-							href="table-datatable-jquery.html" class="submenu-link">부서 관리</a>
-						</li>
-					</ul></li>
-				-->
-
-					
-				<!--
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-bar-chart-fill"></i> <span>매장
-							관리</span>
-				</a>
-
-					<ul class="submenu ">
-						<li class="submenu-item  "><a
-							href="ui-icons-bootstrap-icons.html" class="submenu-link">매장직원
-								리스트</a></li>
-						<li class="submenu-item  "><a
-							href="ui-icons-fontawesome.html" class="submenu-link">매출 등록</a></li>
-						<li class="submenu-item  "><a href="ui-icons-dripicons.html"
-							class="submenu-link">휴점 신청</a></li>
-						<li class="submenu-item  "><a href="ui-icons-dripicons.html"
-							class="submenu-link">매출 통계</a></li>
-					</ul></li>
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-mortarboard-fill"></i> <span>교육</span>
-				</a>
-
-					<ul class="submenu ">
-						<li class="submenu-item  "><a href="ui-chart-chartjs.html"
-							class="submenu-link">교육 등록</a></li>
-						<li class="submenu-item  "><a href="ui-chart-apexcharts.html"
-							class="submenu-link">수강 기록</a></li>
-						<li class="submenu-item  "><a href="ui-chart-apexcharts.html"
-							class="submenu-link">교육수강 리스트</a></li>
-					</ul></li>
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-person-fill"></i> <span>나의
-							정보</span>
-				</a>
-
-					<ul class="submenu ">
-						<li class="submenu-item  "><a href="ui-map-google-map.html"
-							class="submenu-link">나의 정보</a></li>
-						<li class="submenu-item  "><a href="ui-map-jsvectormap.html"
-							class="submenu-link">출장</a></li>
-						<li class="submenu-item  "><a href="ui-map-jsvectormap.html"
-							class="submenu-link">서명 관리</a></li>
-						<li class="submenu-item  "><a href="ui-map-jsvectormap.html"
-							class="submenu-link">구매/사용 기록</a></li>
-					</ul></li>
-
-				<li class="sidebar-item"><a href="#" class='sidebar-link'>
-						<i class="bi bi-diagram-3-fill"></i> <span>조직도</span>
-				</a></li>
-
-				<li class="sidebar-item  has-sub"><a href="#"
-					class='sidebar-link'> <i class="bi bi-credit-card-fill"></i> <span>구내식당</span>
-				</a>
-
-					<ul class="submenu ">
-						<li class="submenu-item"><a href="#" class="submenu-link">식권
-								구매</a></li>
-						<li class="submenu-item"><a href="#" class="submenu-link">식단표</a>
-						</li>
-						<li class="submenu-item"><a href="#" class="submenu-link">상품
-								등록/수정</a></li>
-					</ul></li> -->
-
-			</ul>
+			<ul class="menu"></ul>
 		</div>
 	</div>
 </div>
@@ -199,29 +39,8 @@
 	function drawMenu(menuList){
 		var content ='';
 		for (var menu of menuList) {
-			//console.log('menu.depth1_role != null: ',menu.depth1_role != null);
-			//console.log('menu.depth1_role: ',menu.depth1_role);
-			//console.log('authority: ',authority);
-			//console.log("roleArr",roleArr);
-			if(menu.depth1_role != null ){
-				 var roles = menu.depth1_role.toUpperCase().split(',');
-				 console.log("roles",roles);
-				 console.log("roles.includes(authority)",roles.includes(authority));
+			content +='<li class="sidebar-item';
 
-		            // 유저의 권한이 roles 배열에 포함되는지 확인
-	            if (roles.includes(authority)) {
-					showMenu(menu);
-				}
-			}else{
-				showMenu(menu);
-			}
-		}
-
-		function showMenu(menu){
-			console.log('menu.depth1_name: ',menu.depth1_name,' menu.depth1_role:',menu.depth1_role);
-
-			
-			content +='<li class="sidebar-item'; 
 			if(menu.childMenus.length > 0){
 				content +=' has-sub">';
 				content +='<a class="sidebar-link"> ';
@@ -229,40 +48,24 @@
 				content +='">';
 				content +='<a href="'+menu.depth1_url+'" class=\"sidebar-link\"> ';
 			}
+
 			content +='<i class="bi '+menu.depth1_icon+'"></i> ';
 			content +='<span>'+menu.depth1_name+'</span></a>';
-			console.log('menu.childMenus.length : ',menu.childMenus.length);
+
 			if(menu.childMenus.length > 0){
 				content +='<ul class="submenu">';
-				// 권한이 all이거나 해당 권한이 있는 경우가 아닌경우 ul도 안보이게
 				for (var menu2 of menu.childMenus) {
-					if(menu2.depth2_role != null ){
-						 var roles = menu2.depth2_role.toUpperCase().split(',');
-						 console.log("depth2 roles",menu2.depth2_name , '::',roles);
-						 console.log("depth2 roles.includes(authority)",roles.includes(authority));
-
-			            // 유저의 권한이 메뉴 권한에 포함되는지 확인
-			            if (roles.includes(authority)) {
-			            	content +='<li class="submenu-item ">';
-							content +='<a href="'+menu2.depth2_url+'" class="submenu-link">'+menu2.depth2_name+'</a>';
-							content +='</li>';
-						}
-		            // 권한이 all인 경우
-					}else{
-						content +='<li class="submenu-item ">';
-						content +='<a href="'+menu2.depth2_url+'" class="submenu-link">'+menu2.depth2_name+'</a>';
-						content +='</li>';
-					}
+					content +='<li class="submenu-item ">';
+					content +='<a href="'+menu2.depth2_url+'" class="submenu-link">'+menu2.depth2_name+'</a>';
+					content +='</li>';
 				}
 			}
-		
-		content +='</ul>';
-		content +='</li>';
-		
+
+			content +='</ul>';
+			content +='</li>';
 		}
-			
+
 	     $('.sidebar-menu .menu').append(content);
-	     
 	}
 	
 

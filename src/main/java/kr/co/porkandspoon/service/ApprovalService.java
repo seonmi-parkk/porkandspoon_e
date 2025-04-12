@@ -1,5 +1,8 @@
 package kr.co.porkandspoon.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.co.porkandspoon.dao.ApprovalDAO;
 import kr.co.porkandspoon.dto.*;
 import org.slf4j.Logger;
@@ -307,6 +310,7 @@ public class ApprovalService {
 		return prefix + date + String.format("%04d", newNumber);
 	}
 
+	@Transactional
 	public void deleteFiles(List<FileDTO> deleteFiles, String draftIdx) {
 		for (FileDTO file : deleteFiles) {
 			if(file != null) {
@@ -475,6 +479,7 @@ public class ApprovalService {
 		return approvalDAO.userApprovalInfo(approvalDTO);
 	}
 
+	@Transactional
 	public Map<String, Object> getDraftUpdateViewData(String draftIdx, String loginId, boolean reapproval) {
 		// 기안자 여부
 		boolean isDraftSender = isDraftSender(draftIdx, loginId);
@@ -503,5 +508,38 @@ public class ApprovalService {
 		result.put("message", message);
 
 		return result;
+	}
+
+	@Transactional
+	public String draftUpdate(String deletedFilesJson, MultipartFile[] logoFile, MultipartFile[] newFiles, String imgsJson, ApprovalDTO approvalDTO, String reapproval) {
+		//logger.info("deletedFileIdsJson!! : " + deletedFilesJson);
+		String draftIdx = approvalDTO.getDraft_idx();
+
+		/* 새 로고파일 첨부시 */
+		if (logoFile != null && logoFile.length > 0) {
+			// 기존 로고 삭제
+			List<FileDTO> logoDtoList = new ArrayList<>();
+			FileDTO logoFileDto = getLogoFile(draftIdx);
+			logoDtoList.add(logoFileDto);
+			deleteFiles(logoDtoList, draftIdx);
+		}
+
+		/* 일반 첨부파일 */
+		// 삭제할 기존 첨부파일 (json -> List<String> 변환)
+		ObjectMapper objectMapper = new ObjectMapper();
+		List<String> deletedFiles = new ArrayList<>();
+		try {
+			deletedFiles = objectMapper.readValue(deletedFilesJson, new TypeReference<List<String>>() {});
+		} catch (JsonProcessingException e) {
+			throw new RuntimeException("파일 ID JSON 파싱 실패", e);
+		}
+		// 삭제 처리
+		for (String file : deletedFiles) {
+			deleteFile(file, draftIdx,false);
+		}
+
+		// 새로 업로드된 파일 저장, db 데이터 저장
+		updateDraft(approvalDTO, newFiles, logoFile, reapproval);
+		return approvalDTO.getDraft_idx();
 	}
 }
