@@ -450,8 +450,7 @@
 	    headers: ['아이디', '이름', '부서', '직급', '삭제'],
 	    rows: [
 	        //['${userDTO.name}', '${userDTO.dept.text}', '${userDTO.position_content}', '기안', '<button class="btn btn-primary">삭제</button>'],
-	    ],
-	    footer: '<button class="btn btn-outline-secondary btn-line-write" onclick="loadModal(\'ApprLine\',\'Bookmark\')">라인저장</button>'
+	    ]
 	};
 	var exampleData = JSON.parse(JSON.stringify(initialData));
 

@@ -1,12 +1,8 @@
 package kr.co.porkandspoon.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kr.co.porkandspoon.dto.ApprovalDTO;
-import kr.co.porkandspoon.dto.FileDTO;
-import kr.co.porkandspoon.dto.NoticeDTO;
-import kr.co.porkandspoon.dto.UserDTO;
+import kr.co.porkandspoon.dto.*;
 import kr.co.porkandspoon.service.AlarmService;
 import kr.co.porkandspoon.service.ApprovalService;
 import org.slf4j.Logger;
@@ -29,7 +25,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/approval")
@@ -78,22 +73,25 @@ public class ApprovalController {
 	// 기안문 수정 뷰
 	@GetMapping(value="/updateView/{draft_idx}/{reapproval}")
 	public ModelAndView draftUpdateView(@PathVariable String draft_idx, @PathVariable boolean reapproval, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
-		ModelAndView mav = new ModelAndView("/approval/draftUpdate");
+		ModelAndView mav = null;
 
 		String loginId = userDetails.getUsername();
 		// 수정 권한 및 전달 메세지 처리
 		Map<String, Object> result = approvalService.getDraftUpdateViewData(draft_idx, loginId, reapproval);
 
 		if(Boolean.TRUE.equals(result.get("permission"))) {
+			mav = new ModelAndView("/approval/draftUpdate");
 			// 재기안 or 임시저장 수정 여부
 			mav.addObject("reapproval", reapproval);
 			// 기안 유저 정보
 			mav.addObject("userDTO", approvalService.getUserInfo(loginId));
+			// 기안문 정보 mav에 담기
+			getDetailInfo(draft_idx, mav);
+		}else{
+			encodeAccessDeniedMessage(response, (String) result.get("message"));
 		}
 
-		// 권한 여부에 따른 데이터, 메세지 인코딩 처리
-		boolean returnValue = checkDraftPermission(draft_idx, response, mav, (boolean) result.get("permission"), (String) result.get("message"));
-		return returnValue ? mav : null;
+		return mav;
 	}
 
 	// 기안문 수정
@@ -113,90 +111,32 @@ public class ApprovalController {
 		return result;
 	}
 
+
 	// 기안 상세페이지 뷰
 	@GetMapping(value="/detail/{draft_idx}")
 	public ModelAndView draftDetailView(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
-		ModelAndView mav = new ModelAndView("/approval/draftDetail");  
+		ModelAndView mav = null;
 
 		String loginId = userDetails.getUsername();
-		// 부서정보
-		String userDept = approvalService.getUserDept(loginId);
-		/* 권한체크*/
-		// 기안자여부
-		boolean isDraftSender = approvalService.isDraftSender(draft_idx,loginId);
-		// 본인의 결재상태
-		ApprovalDTO userApproverInfo = approvalService.approverStatus(draft_idx,loginId);
-		String approverStatus = userApproverInfo.getStatus();
-		String approverOrder = userApproverInfo.getOrder_num();
+		// 기안문 열람 권한 체크
+		DraftPermissionResultDTO permissionResult = approvalService.checkPermission(draft_idx, loginId);
 
-		// 이전 결재자들의 결재상태 (내 순서인지 체크)
-		List<String> otherApproversStatus = approvalService.otherApproversStatus(draft_idx,loginId);
-		boolean approverTurn = true;
-		for (String status : otherApproversStatus) {
-			if(!status.equals("ap004")) {
-				approverTurn = false;
-				break;
-			}
-		}
-
-		// 협력부서여부
-		boolean isCooperDept = approvalService.isCooperDept(draft_idx,userDept);
-		// 기안부서여부
-		boolean isApproveDept = approvalService.isApproveDept(draft_idx,userDept);
-		// 삭제여부
-		boolean isDeleted = approvalService.getDraftStatus(draft_idx).equals("de");
-		boolean permission = (isDraftSender || approverStatus != null || isCooperDept || isApproveDept) && !isDeleted;
-		
-		mav.addObject("isDraftSender", isDraftSender);
-		mav.addObject("approverStatus", approverStatus);
-		mav.addObject("approverOrder", approverOrder);
-		mav.addObject("approverTurn", approverTurn);
-		
-		String message = "";
-		//전송메세지
-		if(!permission) {			
-			message = "해당 기안문의 열람권한이 없습니다.";
-		}
-		if(isDeleted) {
-			message = "삭제된 기안문입니다.";
-		}
-		
-
-		// 상세페이지 리턴 여부
-		boolean returnValue = checkDraftPermission(draft_idx, response, mav, permission, message);
-		return returnValue ? mav : null;
-	}
-	
-	// 기안문 열람권한 여부에 따른 데이터 처리 or 접근불가 메세지 인코딩 처리
-	boolean checkDraftPermission(String draft_idx, HttpServletResponse response, ModelAndView mav, boolean permission, String message) {
-		boolean returnValue = false;
-		if(permission) {
+		if(permissionResult.isPermitted()){
+			mav = new ModelAndView("/approval/draftDetail");
+			mav.addObject("isDraftSender", permissionResult.isDraftSender());
+			mav.addObject("approverStatus", permissionResult.getApproverStatus());
+			mav.addObject("approverOrder", permissionResult.getApproverOrder());
+			mav.addObject("approverTurn", permissionResult.isApproverTurn());
+			// 기안문 정보 mav에 담기
 			getDetailInfo(draft_idx, mav);
-			returnValue = true;
-		}else {
-			try {
-				// 메시지를 URL 인코딩
-				response.setContentType("text/html;charset=UTF-8");
-				response.getWriter().write("<script>alert('" + message + "'); history.back();</script>");
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+		}else{
+			// 접근 불가 메세지 인코딩
+			encodeAccessDeniedMessage(response, permissionResult.getMessage());
 		}
-		return returnValue;
+		return mav;
 	}
-	
-	// 기안문 정보 가져오기
-	private void getDetailInfo(String draft_idx, ModelAndView mav) {
-		ApprovalDTO DraftInfo = approvalService.getDraftInfo(draft_idx);
-		List<ApprovalDTO> ApprLine = approvalService.getApprLine(draft_idx);
 
-		mav.addObject("DraftInfo", DraftInfo);
-		mav.addObject("ApprLine", ApprLine);
-		mav.addObject("logoFile", approvalService.getLogoFile(draft_idx));
-		mav.addObject("attachedFiles", approvalService.getAttachedFiles(draft_idx));
-		mav.addObject("deptList", approvalService.getDeptList());
-	}
-	
+
 	// 결재자 상태변경(결재중으로)
 	@PutMapping(value="/changeStatusToRead/{draft_idx}")
 	public Map<String, Object> changeStatusToRead(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails) {
@@ -225,7 +165,6 @@ public class ApprovalController {
 		String loginId = userDetails.getUsername();
 		Map<String,Object> result = new HashMap<String, Object>();
         params.put("loginId", loginId);
-        params.put("listType", listType); // check!!! 이거빼도 될듯 jsp에서 보내주는듯
 		result.put("approvalList", approvalService.getApprovalMyListData(params));
 			
 		return result;
@@ -284,17 +223,11 @@ public class ApprovalController {
 		}else {
 			// 마지막 결재자가 아닌경우
 			// 다음 사람에게 요청 알림
-			NoticeDTO noticedto = new NoticeDTO();
-			noticedto.setFrom_idx(approvalDTO.getDraft_idx());
-			noticedto.setUsername(approvalDTO.getUsername());
-			noticedto.setCode_name("ml007");
+			NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(), approvalDTO.getDraft_idx(), "ml007");
 			alarmService.saveAlarm(noticedto);
 			
 			// 기안자에게 승인 요청 알림
-			NoticeDTO noticedto2 = new NoticeDTO();
-			noticedto2.setFrom_idx(approvalDTO.getDraft_idx());
-			noticedto2.setUsername(approvalDTO.getUsername());
-			noticedto2.setCode_name("ml008");
+			NoticeDTO noticedto2 = new NoticeDTO(approvalDTO.getUsername(), approvalDTO.getDraft_idx(), "ml008");
 		    alarmService.saveAlarm(noticedto2);
 		}
 		
@@ -365,7 +298,7 @@ public class ApprovalController {
 		return userInfo;
 	}
 
-	// 조직도 결재라인 설정
+	// 조직도 결재라인 즐겨찾기 저장
 	@PostMapping(value="/setApprLineBookmark")
 	public Map<String, Object> setApprLineBookmark(
 		@RequestParam Map<String, Object> params,
@@ -417,6 +350,31 @@ public class ApprovalController {
 				.contentType(MediaType.parseMediaType(contentType))
 				.body(resource);
 	}
+
+
+	// 접근 권한 없는 경우 메세지 URL 인코딩
+	void encodeAccessDeniedMessage(HttpServletResponse response, String message){
+		try {
+			response.setContentType("text/html;charset=UTF-8");
+			response.getWriter().write("<script>alert('" + message + "'); history.back();</script>");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+
+	// 기안문 정보 가져오기
+	private void getDetailInfo(String draft_idx, ModelAndView mav) {
+		ApprovalDTO DraftInfo = approvalService.getDraftInfo(draft_idx);
+		List<ApprovalDTO> ApprLine = approvalService.getApprLine(draft_idx);
+
+		mav.addObject("DraftInfo", DraftInfo);
+		mav.addObject("ApprLine", ApprLine);
+		mav.addObject("logoFile", approvalService.getLogoFile(draft_idx));
+		mav.addObject("attachedFiles", approvalService.getAttachedFiles(draft_idx));
+		mav.addObject("deptList", approvalService.getDeptList());
+	}
+
 
 	// JSON 문자열을 FileDTO 리스트로 변환
 	public List<FileDTO> jsonToFileDtoList(String imgsJson) {

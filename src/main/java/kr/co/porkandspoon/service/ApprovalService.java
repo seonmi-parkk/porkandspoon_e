@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.ModelAndView;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,7 +20,6 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class ApprovalService {
@@ -75,21 +73,18 @@ public class ApprovalService {
 			updateDraft(approvalDTO, attachedFiles, logoFile, "false");
 		}
         
-        // 재상신의 경우
-        if(new_filename != null) {
-        	for (String filename : new_filename) {
-				// 기존파일 저장
-        		approvalDAO.saveExistingFiles(filename, draftIdx);
-			}
-        }
+//        // 재상신의 경우
+//        if(new_filename != null) {
+//        	for (String filename : new_filename) {
+//				// 기존파일 저장
+//        		approvalDAO.saveExistingFiles(filename, draftIdx);
+//			}
+//        }
 
 		// 임시저장이 아닌 상신의 경우
         if(status.equals("sd")) {
         	// 알림 요청
-        	NoticeDTO noticedto = new NoticeDTO();
-        	noticedto.setFrom_idx(draftIdx);
-    		noticedto.setUsername(approvalDTO.getUsername());
-    		noticedto.setCode_name("ml007");
+        	NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(),draftIdx,"ml007");
     		alarmService.saveAlarm(noticedto);
         }
         return draftIdx;
@@ -356,13 +351,10 @@ public class ApprovalService {
 		int draftRow = approvalDAO.changeStatusToReturn(approvalDTO);
 
 		// 결재 반려 알림
-		NoticeDTO noticedto = new NoticeDTO();
-		noticedto.setFrom_idx(approvalDTO.getDraft_idx());
-		noticedto.setUsername(approvalDTO.getUsername());
-		noticedto.setCode_name("ml009");
+		NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(),approvalDTO.getDraft_idx(),"ml009");
 		alarmService.saveAlarm(noticedto);
 
-		return approvalRow > 0 && draftRow >0 ? true : false;
+		return approvalRow > 0 && draftRow > 0;
 	}
 
 	// 기안문 결재
@@ -540,6 +532,63 @@ public class ApprovalService {
 
 		// 새로 업로드된 파일 저장, db 데이터 저장
 		updateDraft(approvalDTO, newFiles, logoFile, reapproval);
+
+		if(reapproval.equals("true")){
+			//수정 알림전송
+
+		}
 		return approvalDTO.getDraft_idx();
 	}
+
+	// 기안문 열람 권한 체크
+	public DraftPermissionResultDTO checkPermission(String draftIdx, String loginId) {
+		// 기안자여부
+		boolean isDraftSender = isDraftSender(draftIdx,loginId);
+		// 본인의 결재상태
+		ApprovalDTO userApproverInfo = approverStatus(draftIdx,loginId);
+
+		boolean approverTurn = false;
+		String approverStatus = null;
+		String approverOrder = null;
+
+		if(userApproverInfo != null){
+			approverStatus = userApproverInfo.getStatus();
+			approverOrder = userApproverInfo.getOrder_num();
+
+			// 이전 결재자들의 결재상태 (내 순서인지 체크)
+			approverTurn = true;
+			List<String> otherApproversStatus = otherApproversStatus(draftIdx,loginId);
+			for (String status : otherApproversStatus) {
+				if(!status.equals("ap004")) {
+					approverTurn = false;
+					break;
+				}
+			}
+		}
+
+		// 로그인 유저의 부서정보
+		String userDept = getUserDept(loginId);
+		// 협력부서 여부
+		boolean isCooperDept = isCooperDept(draftIdx,userDept);
+		// 기안부서 여부
+		boolean isApproveDept = isApproveDept(draftIdx,userDept);
+		// 기안문 삭제 여부
+		boolean isDeleted = getDraftStatus(draftIdx).equals("de");
+		boolean permitted = (isDraftSender || approverStatus != null || isCooperDept || isApproveDept) && !isDeleted;
+
+		String message = "";
+		//전송 메세지 셋팅
+		if(!permitted) {
+			message = "해당 기안문의 열람권한이 없습니다.";
+		}
+		if(isDeleted) {
+			message = "삭제된 기안문입니다.";
+		}
+
+		DraftPermissionResultDTO result = new DraftPermissionResultDTO(permitted, message, isDraftSender, approverStatus, approverOrder, approverTurn);
+		return result;
+	}
+
+	// 알림 전송
+
 }

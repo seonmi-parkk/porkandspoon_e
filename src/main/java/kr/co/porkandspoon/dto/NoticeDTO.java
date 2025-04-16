@@ -124,4 +124,13 @@ public class NoticeDTO extends ResponseDTO {
 	public void setCheck_date(LocalDateTime check_date) {
 		this.check_date = check_date;
 	}
+
+
+	public NoticeDTO() {}
+
+	public NoticeDTO(String username, String from_idx, String code_name) {
+		this.username = username;
+		this.from_idx = from_idx;
+		this.code_name = code_name;
+	}
 }
