@@ -125,7 +125,6 @@ public class ApprovalController {
 			mav = new ModelAndView("/approval/draftDetail");
 			mav.addObject("isDraftSender", permissionResult.isDraftSender());
 			mav.addObject("approverStatus", permissionResult.getApproverStatus());
-			mav.addObject("approverOrder", permissionResult.getApproverOrder());
 			mav.addObject("approverTurn", permissionResult.isApproverTurn());
 			// 기안문 정보 mav에 담기
 			getDetailInfo(draft_idx, mav);
@@ -202,7 +201,7 @@ public class ApprovalController {
 		return result;
 	}
 
-	// 기안문 승인
+	// 기안문 결재(승인)
 	@Transactional
 	@PostMapping(value="/ApprovalDraft")
 	public Map<String, Object> approvalDraft(@ModelAttribute ApprovalDTO approvalDTO, @AuthenticationPrincipal UserDetails userDetails) {
@@ -214,10 +213,10 @@ public class ApprovalController {
 		// 마지막 결재자인 경우 기안문테이블 상태코드 변경(결재완료)
 		ApprovalDTO approvalInfo = approvalService.userApprovalInfo(approvalDTO);
 		//결재자 결재 순서
-		String orderNum = approvalInfo.getOrder_num();
+		int orderNum = approvalInfo.getOrder_num();
 		//총 결재자 수
 		int totalCount = approvalInfo.getApproval_line_count();
-		if(Integer.parseInt(orderNum) == (totalCount-1)) {
+		if(orderNum == (totalCount-1)) {
 			// 마지막 결재자인 경우
 			approvalService.changeStatusToApproved(approvalDTO.getDraft_idx());
 		}else {

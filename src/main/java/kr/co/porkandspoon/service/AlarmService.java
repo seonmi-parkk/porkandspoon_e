@@ -35,7 +35,7 @@ public class AlarmService {
 	    // 한국 시간으로 설정
 	    noticeDTO.setCreate_date(currentTimestamp);
 		// 대댓글 = 해당 게시글의 데이터 가져오기
-		if (noticeDTO.getCode_name() == "ml004") {
+		if (noticeDTO.getCode_name().equals("ml004")) {
 			boarddto.setBoard_idx(Integer.parseInt(noticeDTO.getBoard_idx()));
 			boarddto.setFrom_idx(noticeDTO.getFrom_idx());
 			boarddto = alarmDAO.getBoardUS(boarddto);
@@ -44,10 +44,10 @@ public class AlarmService {
 		}
 		
 		// 결재자에게 결재 요청 알림
-		if (noticeDTO.getCode_name() == "ml007") {
+		if (noticeDTO.getCode_name().equals("ml007")) {
 			ApprovalDTO appdto =  alarmDAO.getDraftLine(noticeDTO);
-			int orderNum = Integer.parseInt(appdto.getOrder_num()); // String -> int
-	        appdto.setOrder_num(String.valueOf(orderNum + 1));
+			int orderNum = appdto.getOrder_num(); // String -> int
+	        appdto.setOrder_num(orderNum + 1);
 			appdto = alarmDAO.getDraft(appdto);
 			noticeDTO.setFrom_idx(appdto.getDraft_idx());
 			noticeDTO.setUsername(appdto.getUsername());
@@ -56,10 +56,10 @@ public class AlarmService {
 		}
 		
 		// 기안자에게 결재 승인 알림
-		if (noticeDTO.getCode_name() == "ml008") {
+		if (noticeDTO.getCode_name().equals("ml008")) {
 			ApprovalDTO appdto =  alarmDAO.getDraftLine(noticeDTO);
 			noticeDTO.setFrom_id(appdto.getUsername());
-	        appdto.setOrder_num("0");
+	        appdto.setOrder_num(0);
 			appdto = alarmDAO.getDraft(appdto);
 			noticeDTO.setFrom_idx(appdto.getDraft_idx());
 			noticeDTO.setUsername(appdto.getUser_name());
@@ -67,10 +67,10 @@ public class AlarmService {
 		}
 		
 		// 기안자에게 반려 알림
-		if (noticeDTO.getCode_name() == "ml009") {
+		if (noticeDTO.getCode_name().equals("ml009")) {
 			ApprovalDTO appdto =  alarmDAO.getDraftLine(noticeDTO);
 			noticeDTO.setFrom_id(appdto.getUsername());
-	        appdto.setOrder_num("0");
+	        appdto.setOrder_num(0);
 			appdto = alarmDAO.getDraft(appdto);
 			noticeDTO.setFrom_idx(appdto.getDraft_idx());
 			noticeDTO.setUsername(appdto.getUser_name());
@@ -78,7 +78,7 @@ public class AlarmService {
 		}
 		
 		// 회의실 예약 알림
-		if(noticeDTO.getCode_name() == "ml001") {
+		if(noticeDTO.getCode_name().equals("ml001")) {
 			NoticeDTO ndto = alarmDAO.getRoomUser(noticeDTO);
 			noticeDTO.setFrom_id(ndto.getFrom_id());
 			noticeDTO.setSubject(ndto.getSubject());
@@ -86,7 +86,7 @@ public class AlarmService {
 		
 
 		// 교육 시청 알림 개별 로직
-		if(noticeDTO.getCode_name() == "ml005") {
+		if(noticeDTO.getCode_name().equals("ml005")) {
 			List<NoticeDTO> dtoList = alarmDAO.getEdu(noticeDTO);
 		    for (NoticeDTO noticedto : dtoList) {
 		    	NoticeDTO newNotice = new NoticeDTO();

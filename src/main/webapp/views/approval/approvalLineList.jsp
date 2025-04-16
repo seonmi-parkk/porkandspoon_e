@@ -379,7 +379,7 @@ function drawList(list) {
 		content += '<td>'+view.line_idx+'</td>';
 		content += '<td class="align-l">'+view.line_name+'</td>';
 		// 결재자 수 만큼
- 	 	for (var i=0; i<approverNames.length; i++) {
+ 	 	for (var i=1; i<approverNames.length; i++) {
  	 		content += '<td>'+ approverNames[i] +' '+ approverPositions[i] +'</td>';
  	 	}
 

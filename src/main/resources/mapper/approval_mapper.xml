@@ -507,26 +507,29 @@
 	</insert>
 	
 	<select id="getLineBookmark" parameterType="map" resultType="kr.co.porkandspoon.dto.ApprovalDTO" >
-		SELECT 
+		SELECT
 		    ab.line_idx,
 		    ab.line_name,
 		    ab.username,
 		    u.name,
 		    JSON_UNQUOTE(JSON_EXTRACT(ab.order_user, '$.*')) AS approver_usernames,
-		    GROUP_CONCAT(u2.name ORDER BY JSON_UNQUOTE(JSON_EXTRACT(ab.order_user, CONCAT('$.', idx))) SEPARATOR ', ') AS approver_names, 
-		    GROUP_CONCAT(c.content ORDER BY JSON_UNQUOTE(JSON_EXTRACT(ab.order_user, CONCAT('$.', idx))) SEPARATOR ', ') AS approver_positions,
+		    GROUP_CONCAT(u2.name ORDER BY jt.idx SEPARATOR ', ') AS approver_names,
+		    GROUP_CONCAT(c.content ORDER BY jt.idx SEPARATOR ', ') AS approver_positions,
 			COUNT(*) OVER() AS total_count
-		FROM 
+		FROM
 		    approval_bookmark ab
-		JOIN 
+		JOIN
 		    user u ON ab.username = u.username 
 		JOIN 
 		    JSON_TABLE(
 		        ab.order_user, 
-		        '$.*' COLUMNS (idx FOR ORDINALITY, approver_username VARCHAR(255) PATH '$')
+		        '$.*' COLUMNS (
+		            idx FOR ORDINALITY,
+		            approver_username VARCHAR(255) PATH '$'
+				)
 		    ) jt ON TRUE 
-		JOIN 
-		    user u2 ON JSON_UNQUOTE(JSON_EXTRACT(ab.order_user, CONCAT('$.', idx))) = u2.username
+		JOIN
+		    user u2 ON jt.approver_username = u2.username
 		JOIN 
 		    code c ON u2.position = c.name 
 	    WHERE 

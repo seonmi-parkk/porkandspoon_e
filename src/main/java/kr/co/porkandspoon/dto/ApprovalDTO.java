@@ -48,7 +48,7 @@ public class ApprovalDTO {
    
    // 결재라인 테이블
    private String line_idx;
-   private String order_num;
+   private int order_num;
    private String approval_date;
    private String comment;
    
@@ -104,7 +104,7 @@ public class ApprovalDTO {
       return line_idx;
    }
 
-   public String getOrder_num() {
+   public int getOrder_num() {
       return order_num;
    }
 
@@ -120,7 +120,7 @@ public class ApprovalDTO {
       this.line_idx = line_idx;
    }
 
-   public void setOrder_num(String order_num) {
+   public void setOrder_num(int order_num) {
       this.order_num = order_num;
    }
 
