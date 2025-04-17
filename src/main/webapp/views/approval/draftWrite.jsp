@@ -745,6 +745,8 @@ var approvalLines = ['${userDTO.username}'];
         $('#approvalBtn').text('나의 결재라인');
         
     	$('.chart-btn-style').on('click', function(){
+			$('#chartModalBox .chart-td').removeClass('active');
+			$(this).parent().addClass('active');
 	        /* 조직도 버튼 클릭 시 조직도 버튼 show 나의 결재선 hide */
 	    	if($(this).hasClass('chart-btn')){
 	    		$('#chartModalBox .tbody-style').show();

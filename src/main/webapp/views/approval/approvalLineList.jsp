@@ -384,8 +384,9 @@ function drawList(list) {
  	 	}
 
 		// 결재자 수에 따라 달라지는 td갯수 맞추기
+		debugger;
 	    var numColumns = approverNames.length;  
-	    var maxColumns = 3;  // 최대
+	    var maxColumns = 4;  // 최대
 	    var missingColumns = maxColumns - numColumns; 
         // <td> 추가
 	    if (missingColumns > 0) {

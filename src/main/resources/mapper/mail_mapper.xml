@@ -25,13 +25,14 @@
 		]]>
 	</select>
 	
-	<insert id="saveMail" parameterType="kr.co.porkandspoon.dto.MailDTO">
+	<insert id="saveMail"
+			parameterType="kr.co.porkandspoon.dto.MailDTO"
+			useGeneratedKeys="true"
+			keyProperty="idx"
+	>
 		INSERT INTO mail (
 			sender
 			,send_status
-			 <if test="idx != null">
-			 	,idx
-			 </if>
 			 <if test="title != null">
 			 	,title
 			 </if>
@@ -42,9 +43,6 @@
 		VALUES (
 			#{sender}
 			,#{send_status}
-			<if test="idx != null">
-				,#{idx}
-			</if>	
 			<if test="title != null">
 				,#{title}
 			</if>	
@@ -52,11 +50,15 @@
 				,#{content}
 			</if>	
 		)
-		ON DUPLICATE KEY UPDATE
-			send_status = VALUES(send_status),
-			title = VALUES(title),
-			content = VALUES(content)
 	</insert>
+
+	<update id="updateMail" parameterType="kr.co.porkandspoon.dto.MailDTO">
+		UPDATE mail SET
+			send_status = #{send_status}
+			,title = #{title}
+			,content = #{content}
+		WHERE idx = #{idx}
+	</update>
 	
 	<delete id="removeMailReceiver">
 		DELETE 
@@ -431,7 +433,7 @@
 	
 	<select id="getDeleteList" parameterType="map" resultType="kr.co.porkandspoon.dto.MailDTO">
  		SELECT
-			m.idx
+			distinct(m.idx)
 			,m.title
 			,m.send_date
 			,m.sender
@@ -635,12 +637,17 @@
 	</insert>
 	
 	<select id="unreadMailCount" resultType="int">
-		SELECT count(idx) 
-		FROM mail_receive 
-		WHERE username = #{loginId} 
-		AND is_read = 'N' 
-		AND use_yn ='Y' 
-		AND use_from_date IS NULL
+		SELECT COUNT(mr.idx)
+		FROM (
+			SELECT *
+		 	FROM mail_receive
+		 	WHERE username = #{loginId}
+		   	AND is_read = 'N'
+		   	AND use_yn = 'Y'
+		   	AND use_from_date IS NULL
+	 	) mr
+		JOIN mail m ON mr.idx = m.idx
+		WHERE send_status = 'sd';
 	</select>
 	
 </mapper>

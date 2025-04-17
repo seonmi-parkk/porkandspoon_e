@@ -4,10 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.co.porkandspoon.dto.FileDTO;
 import kr.co.porkandspoon.dto.MailDTO;
-import kr.co.porkandspoon.dto.UserDTO;
 import kr.co.porkandspoon.service.ApprovalService;
 import kr.co.porkandspoon.service.MailService;
 import kr.co.porkandspoon.util.CommonUtil;
+import kr.co.porkandspoon.util.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -69,32 +69,25 @@ public class MailController {
 		ModelAndView mav = new ModelAndView("/mail/mailWrite");
 		String loginId = userDetails.getUsername();
 		//임시보관 메일 수
-		int savedMailCount = mailService.savedMailCount(loginId);
-		mav.addObject("savedMailCount", savedMailCount);
-		UserDTO userDTO = approvalService.getUserInfo(loginId);
-		mav.addObject("userDTO", userDTO);
+        mav.addObject("savedMailCount", mailService.savedMailCount(loginId));
+		// 로그인 유저 정보
+        mav.addObject("userDTO", approvalService.getUserInfo(loginId));
 		return mav;
 	}
 
+	// 메일 발송
 	@Transactional
 	@PostMapping(value="/write/{status}")
-	public Map<String, Object> MailWrite(@PathVariable String status, @AuthenticationPrincipal UserDetails userDetails, @RequestPart(value="attachedFiles", required = false) MultipartFile[] attachedFiles, @RequestParam(value="existingFileIds", required = false) List<String> existingFileIds, String originalIdx, @RequestParam("imgsJson") String imgsJson, @ModelAttribute MailDTO mailDTO, @RequestParam HashSet<String> username ) {
+	public Map<String, Object> MailWrite(@PathVariable String status, @RequestPart(value="attachedFiles", required = false) MultipartFile[] attachedFiles, @RequestParam(value="existingFileIds", required = false) List<String> existingFileIds, @RequestParam("imgsJson") String imgsJson, @ModelAttribute MailDTO mailDTO, @RequestParam HashSet<String> username, @AuthenticationPrincipal UserDetails userDetails) {
 		Map<String, Object> result = new HashMap<String, Object>();
 		mailDTO.setSender(userDetails.getUsername());
 		mailDTO.setSend_status(status);
 
-		// JSON 문자열을 ImageDTO 리스트로 변환
-        ObjectMapper objectMapper = new ObjectMapper();
-        List<FileDTO> imgs = null;
-        try {
-            // TypeFactory를 사용하여 제네릭 타입을 처리하여 변환
-            imgs = objectMapper.readValue(imgsJson, objectMapper.getTypeFactory().constructCollectionType(List.class, FileDTO.class));
-            mailDTO.setFileList(imgs);  // 변환한 이미지 리스트를 DTO에 설정
-        } catch (Exception e) {
-            return Map.of("error", e.getMessage());
-        }
-        
-        String mailIdx = mailService.saveMail(username, mailDTO, attachedFiles, existingFileIds, originalIdx, status);
+		// JSON 문자열을 FileDTO 리스트로 변환
+        List<FileDTO> imgs = JsonUtil.jsonToList(imgsJson, FileDTO.class);
+		mailDTO.setFileList(imgs);  // 변환한 이미지 리스트를 DTO에 설정
+
+        String mailIdx = mailService.saveMail(mailDTO, username, attachedFiles, existingFileIds, status);
         result.put("mailIdx", mailIdx);
         result.put("status", status);
 		return result;
@@ -105,73 +98,23 @@ public class MailController {
 	public ModelAndView MailDetailView(@PathVariable String idx, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) {
 		ModelAndView mav = null;
 		String loginId = userDetails.getUsername();
-		MailDTO mailInfo = mailService.getMailInfo(idx);
-		
-		// 권한체크
-		// 받는사람
-		boolean isReceiver = false;
-		// 받는사람 <> 괄호 안의 값을 추출
-		String regex = "<([^>]+)>";  
-        Pattern pattern = Pattern.compile(regex);
-        if(mailInfo.getUsername() != null) {
-	        Matcher matcher = pattern.matcher(mailInfo.getUsername());
-	        List<String> usernames = new ArrayList<>();
-	        while (matcher.find()) {
-	        	usernames.add(matcher.group(1));
-	        }
-			
-			for (String user : usernames) {
-				logger.info("user: {} / loginId: {}",user,loginId);
-				if(user.equals(loginId)) {
-					isReceiver = true;
-					break;
-				}
-			}
-        }
-		
-        // 보낸사람
-		boolean isSender = mailInfo.getSender().equals(loginId);
-		
-		if(isReceiver || isSender) {
-			// update시 Filepond 초기값(기존업로드 파일) 설정
-			List<FileDTO> fileList = getUploadedFiles(idx);
-			// 전송일시 
-			LocalDateTime sendDate = mailInfo.getSend_date();
-			 // 요일
-	        String dayOfWeek = sendDate.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.KOREAN); 
-			String send_date = CommonUtil.formatDateTime(sendDate, "yyyy년 MM월 dd일 (" + dayOfWeek + ") a hh:mm");
-			mailInfo.setSend_date_str(send_date);
-			
-			mav = new ModelAndView("/mail/mailDetail"); 
-			mav.addObject("mailInfo", mailInfo);
-			mav.addObject("fileList", fileList);
+		Map<String, Object> result = mailService.mailDetailView(idx, loginId);
+
+		boolean isSender = (Boolean) result.get("isSender");
+		boolean isReceiver = (Boolean) result.get("isReceiver");
+		if(isSender || isReceiver) {
+			mav = new ModelAndView("/mail/mailDetail");
+			mav.addObject("mailInfo", result.get("mailInfo"));
+			mav.addObject("fileList", result.get("fileList"));
 			mav.addObject("isSender", isSender);
 			mav.addObject("isReceiver", isReceiver);
-			if(isReceiver) {
-				//즐겨찾기
-				mav.addObject("is_bookmark", mailService.getReceivedMailBookmark(idx, loginId));
-				//삭제(휴지통)일자
-				mav.addObject("use_from_date", mailService.getReceivedMailUseFromDate(idx, loginId));
-			}else if (isSender) {
-				mav.addObject("is_bookmark", mailService.getSentMailBookmark(idx, loginId));
-				mav.addObject("use_from_date", mailService.getSentMailUseFromDate(idx, loginId));
-			}
+			mav.addObject("is_bookmark", result.get("is_bookmark"));
+			mav.addObject("use_from_date", result.get("use_from_date"));
 		}else {
-			try {
-				// 메시지를 URL 인코딩
-				response.setContentType("text/html;charset=UTF-8");
-				response.getWriter().write("<script>alert('열람 권한이 없습니다.'); history.back();</script>");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			// 접근 불가 메세지 인코딩
+			CommonUtil.encodeAccessDeniedMessage(response, "열람 권한이 없습니다.");
 		}
-		
-		if(isReceiver) {
-			// 읽음 처리
-			List<String> idxList = new ArrayList<String>();
-			idxList.add(idx);
-			mailService.changeToRead(idxList, loginId);
-		}
+
 		return mav;
 	}
 	
@@ -193,24 +136,10 @@ public class MailController {
 	@PutMapping(value = "/bookmark")
 	public Map<String, Object> updateBookmark(@RequestParam Map<String, String> params, @AuthenticationPrincipal UserDetails userDetails) {
 		Map<String, Object> result = new HashMap<String, Object>();
-		boolean success = false;
-		String loginId = userDetails.getUsername();
+        String loginId = userDetails.getUsername();
 		params.put("username", loginId);
 		params.put("is_bookmark", params.get("is_bookmark").equals("Y") ? "N" : "Y");
-
-		// 보낸 메일인지 확인
-	    boolean isSender = mailService.isSender(params);
-	    if (isSender) {
-	        mailService.toggleSentMailBookmark(params);
-	        success = true;
-	    }
-	    // 받은 메일인지 확인
-	    boolean isReceiver = mailService.isReceiver(params);
-	    if (isReceiver) {
-	    	mailService.toggleReceivedMailBookmark(params);
-	    	success = true;
-	    }
-	    result.put("success", success);
+	    result.put("success", mailService.updateBookmark(params));
 	    return result;
 	}
 	
@@ -241,32 +170,8 @@ public class MailController {
 	@PutMapping(value = "/moveToTrash")
 	public Map<String, Object> moveToTrash(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails) {    
 		Map<String, Object> result = new HashMap<String, Object>();
-		boolean success = false;
 		String loginId = userDetails.getUsername();
-		List<String> idxList = params.get("idxList");
-
-		for (String idx : idxList) {
-			List<MailDTO> senderReceivers = mailService.getSenderReceivers(idx);
-			boolean isSender = senderReceivers.get(0).getSender().equals(loginId) ?  true : false;
-			boolean isReceiver = false;
-			for (MailDTO senderReceiver : senderReceivers) {
-				if(senderReceiver.getUsername() == null) {
-					break;
-				}
-				if(senderReceiver.getUsername().equals(loginId)) {
-					isReceiver = true;
-					break;
-				}
-			}
-
-			if(isReceiver) {
-				success = mailService.moveReceivedToTrash(idx,loginId);
-			}
-			if(isSender) {
-				success = mailService.moveSentToTrash(idx,loginId);
-			}
-		}
-		result.put("success", success);
+		result.put("success", mailService.moveToTrash(loginId, params));
 		return result;
 	}
 	
@@ -274,32 +179,8 @@ public class MailController {
 	@PutMapping(value = "/completeDelete")
 	public Map<String, Object> completeDelete(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails) {    
 		Map<String, Object> result = new HashMap<String, Object>();
-		boolean success = false;
 		String loginId = userDetails.getUsername();
-		List<String> idxList = params.get("idxList");
-
-		for (String idx : idxList) {
-			List<MailDTO> senderReceivers = mailService.getSenderReceivers(idx);
-			boolean isSender = senderReceivers.get(0).getSender().equals(loginId) ?  true : false;
-			boolean isReceiver = false;
-			for (MailDTO senderReceiver : senderReceivers) {
-				if(senderReceiver.getUsername() == null) {
-					break;
-				}
-				if(senderReceiver.getUsername().equals(loginId)) {
-					isReceiver = true;
-					break;
-				}
-			}
-			
-			if(isReceiver) {
-				success = mailService.receivedCompleteDelete(idx,loginId);
-			}
-			if(isSender) {
-				success = mailService.sentCompleteDelete(idx,loginId);
-			}
-		}
-		result.put("success", success);
+		result.put("success", mailService.completeDelete(loginId, params));
 		return result;
 	}
 	
@@ -307,32 +188,8 @@ public class MailController {
 	@PutMapping(value = "/restoreFromTrash")
 	public Map<String, Object> restoreFromTrash(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails) {
 		Map<String, Object> result = new HashMap<String, Object>();
-		boolean success = false;
 		String loginId = userDetails.getUsername();
-		List<String> idxList = params.get("idxList");
-
-		for (String idx : idxList) {
-			List<MailDTO> senderReceivers = mailService.getSenderReceivers(idx);
-			boolean isSender = senderReceivers.get(0).getSender().equals(loginId);
-			boolean isReceiver = false;
-			for (MailDTO senderReceiver : senderReceivers) {
-				if(senderReceiver.getUsername() == null) {
-					break;
-				}
-				if(senderReceiver.getUsername().equals(loginId)) {
-					isReceiver = true;
-					break;
-				}
-			}
-
-			if(isReceiver) {
-				success = mailService.receivedRestoreFromTrash(idx,loginId);
-			}
-			if(isSender) {
-				success = mailService.sentRestoreFromTrash(idx,loginId);
-			}
-		}
-		result.put("success", success);
+		result.put("success", mailService.restoreFromTrash(loginId, params));
 		return result;
 	}
 	
@@ -341,29 +198,8 @@ public class MailController {
 	@PutMapping(value = "/toggleBookmark")
 	public Map<String, Object> toggleBookmark(@RequestBody Map<String, List<Map<String, String>>> params, @AuthenticationPrincipal UserDetails userDetails) {    
 		Map<String, Object> result = new HashMap<String, Object>();
-		boolean success = false;
 		String loginId = userDetails.getUsername();
-		List<Map<String, String>> checkedList = params.get("checkedList");
-		
-		for (Map<String, String> checkedItem : checkedList) {
-			checkedItem.put("username", loginId);
-			checkedItem.put("is_bookmark", checkedItem.get("is_bookmark").equals("Y") ? "N" : "Y");
-			
-			// 보낸 메일인지 확인
-		    boolean isSender = mailService.isSender(checkedItem);
-		    if (isSender) {
-		        mailService.toggleSentMailBookmark(checkedItem);
-		        success = true;
-		    }
-
-		    // 받은 메일인지 확인
-		    boolean isReceiver = mailService.isReceiver(checkedItem);
-		    if (isReceiver) {
-		    	mailService.toggleReceivedMailBookmark(checkedItem);
-		    	success = true;
-		    }
-		}
-		result.put("success", success);
+		result.put("success", mailService.toggleBookmark(loginId, params));
 		return result;
 	}
 	
@@ -371,67 +207,32 @@ public class MailController {
 	@GetMapping(value="/prepareMail/{status}/{idx}")
 	public ModelAndView deliverMail(@PathVariable String status, @PathVariable String idx, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response){
 		ModelAndView mav = new ModelAndView("redirect:/");
-		String loginId = userDetails.getUsername();
-		
 		Map<String, String> params = new HashMap<String, String>();
+
+		String loginId = userDetails.getUsername();
 		params.put("username", loginId);
 		params.put("idx", idx);
-		
-		// 권한 체크
-	    boolean isSender = mailService.isSender(params);
-	    boolean isReceiver = mailService.isReceiver(params);
-	    if (isSender || isReceiver) {
-	    	MailDTO mailInfo = mailService.getMailInfo(idx);
+		Map<String,Object> result = mailService.deliverMail(params);
+
+	    if ((boolean) result.get("isSender") || (boolean) result.get("isReceiver")) {
 	    	mav = new ModelAndView("/mail/mailUpdate");
-	    	mav.addObject("mailInfo", mailInfo);
+	    	mav.addObject("mailInfo", result.get("mailInfo"));
 	    	mav.addObject("status", status);
 	    	//임시보관 메일 수
-			int savedMailCount = mailService.savedMailCount(loginId);
-			mav.addObject("savedMailCount", savedMailCount);
+			mav.addObject("savedMailCount", result.get("savedMailCount"));
 	    }else {
-	    	try {
-				// 메시지를 URL 인코딩
-				response.setContentType("text/html;charset=UTF-8");
-				response.getWriter().write("<script>alert('해당 메일에 접근 권한이 없습니다.'); history.back();</script>");
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			// 접근 불가 메세지 인코딩
+			CommonUtil.encodeAccessDeniedMessage(response, "해당 메일에 접근 권한이 없습니다.");
 	    }
 		return mav;
 	}
-	
-	// update시 Filepond 초기값(기존업로드 파일) 설정
-	@GetMapping(value="/getUploadedFiles/{idx}")
-	public List<FileDTO> getUploadedFiles(@PathVariable String idx){
-		List<FileDTO> fileList = mailService.getAttachedFiles(idx);
-		
-		// 파일 크기 가져오기
-		for (FileDTO fileDTO : fileList) {
-			String fileName = fileDTO.getNew_filename();
-	        File file = new File(paths + fileName);
-	        if (file.exists()) {
-	            long fileSize = file.length();
-	            fileDTO.setFile_size(fileSize);
-			}
-		}
-		return fileList;
-	}
-	
+
 	// 다시보내기
 	@Transactional
 	@PostMapping(value="/resend")
 	public Map<String, Object> resend(@RequestBody Map<String, List<String>> params, @AuthenticationPrincipal UserDetails userDetails){
 		Map<String, Object> result = new HashMap<String, Object>();
-		boolean success = false;
-		for (String idx : params.get("idxList")) {
-			MailDTO mailDTO = new MailDTO();
-			mailDTO.setIdx(idx);
-			mailService.copyMailRow(mailDTO);
-			String newIdx = mailDTO.getIdx();
-			mailService.copyMailReceiverRow(newIdx,idx);
-		}
-		success = true;
-		result.put("success", success);
+		result.put("success", mailService.resend(params));
 		return result;
 	}
 	

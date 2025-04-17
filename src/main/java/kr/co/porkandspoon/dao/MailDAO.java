@@ -89,4 +89,5 @@ public interface MailDAO {
 
 	boolean changeToUnread(String idx, String loginId);
 
+	void updateMail(MailDTO mailDTO);
 }

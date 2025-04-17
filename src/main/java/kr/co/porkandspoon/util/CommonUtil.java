@@ -31,12 +31,32 @@ import org.springframework.web.multipart.MultipartFile;
 
 import kr.co.porkandspoon.dto.FileDTO;
 
+import javax.servlet.http.HttpServletResponse;
+
 public class CommonUtil {
    
    @Value("${upload.path}") static String paths; 
 
    @Value("${uploadTem.path}")   static String pathTem;
-   
+
+
+    /**
+     * author sm.park (24.12.13)
+     * 접근 권한 없는 경우 메세지 URL 인코딩 후 history.back();
+     *
+     * @param response : HttpServletResponse
+     * @param message : 전달할 String 메세지
+     */
+    public static void encodeAccessDeniedMessage(HttpServletResponse response, String message){
+        try {
+            response.setContentType("text/html;charset=UTF-8");
+            response.getWriter().write("<script>alert('" + message + "'); history.back();</script>");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
    /**
     * author yh.kim (24.12.13) 
     * 문자열 날짜를 지정된 형식으로 변환
@@ -263,7 +283,7 @@ public class CommonUtil {
      * author yh.kim (24.12.14) 
      * 임시 저장 폴더에서 최종 파일 폴더로 저장
      * 
-     * @param 파일 명(new_filename + type)
+     * @param fileNames 파일명(new_filename + type)
      * @return
      */
     public static boolean moveFiles(List<String> fileNames) {

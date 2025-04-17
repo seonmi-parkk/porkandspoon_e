@@ -1,6 +1,9 @@
 package kr.co.porkandspoon.dto;
 
+import org.springframework.web.bind.annotation.RequestParam;
+
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 
 public class MailDTO {
@@ -11,16 +14,11 @@ public class MailDTO {
 	private String content;
 	private LocalDateTime send_date;
 	private String send_date_str;
-	public String getSend_date_str() {
-		return send_date_str;
-	}
-	public void setSend_date_str(String send_date_str) {
-		this.send_date_str = send_date_str;
-	}
 	private String send_status;
 	private String use_yn;
 	private String use_from_date;
 	private String is_bookmark;
+	private String originalIdx;
 
 	// 메일 수신테이블
 	private String username;
@@ -160,6 +158,19 @@ public class MailDTO {
 	public void setMail_type(String mail_type) {
 		this.mail_type = mail_type;
 	}
+	public String getSend_date_str() {
+		return send_date_str;
+	}
+	public void setSend_date_str(String send_date_str) {
+		this.send_date_str = send_date_str;
+	}
 
+    public String getOriginalIdx() {
+        return originalIdx;
+    }
+
+    public void setOriginalIdx(String originalIdx) {
+        this.originalIdx = originalIdx;
+    }
 
 };

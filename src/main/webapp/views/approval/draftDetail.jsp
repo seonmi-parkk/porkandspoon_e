@@ -948,10 +948,10 @@ function changeStatusToSend(){
         },
         success : function(response){
         	 if(response.success){
-     		 	removeAlert(); 
+     		 	removeAlert();
       			layerPopup('상신 완료되었습니다.', '확인', false, btn1Act, btn1Act);
      		 }else{
-     		 	removeAlert(); 
+     		 	removeAlert();
       			layerPopup('상신 처리에 실패하였습니다.', '재시도', '취소', changeStatusToSend, btn1Act);
      		 }
         },error: function(e){

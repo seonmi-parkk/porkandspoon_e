@@ -1,8 +1,12 @@
 package kr.co.porkandspoon.service;
 
 import kr.co.porkandspoon.dao.MainDAO;
+import kr.co.porkandspoon.dao.UserDAO;
+import kr.co.porkandspoon.dto.MainDto;
 import kr.co.porkandspoon.dto.MenuDTO;
 import kr.co.porkandspoon.dto.MenuDepth2DTO;
+import kr.co.porkandspoon.dto.UserDTO;
+import kr.co.porkandspoon.util.security.CustomUserDetails;
 import org.slf4j.Logger;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,12 +19,22 @@ import java.util.stream.Collectors;
 @Service
 public class MainService {
 
+
 	Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
 
+	private final UserDAO userDAO;
 	private final MainDAO menuDAO;
+	private final MailService mailService;
+	private final ApprovalService approvalService;
+	private final ResevationService reservationService;
 
-	public MainService(MainDAO menuDAO) {
+
+	public MainService(MainDAO menuDAO, MailService mailService, ApprovalService approvalService, ResevationService reservationService, UserDAO userDAO) {
 		this.menuDAO = menuDAO;
+		this.mailService = mailService;
+		this.approvalService = approvalService;
+		this.reservationService = reservationService;
+		this.userDAO = userDAO;
 	}
 
 	public List<MenuDTO> getMenu() {
@@ -88,4 +102,19 @@ public class MainService {
 		return Arrays.asList(menuRoles.split(",")).contains(normalizedUserRole);
 	}
 
+    public MainDto getMainViewData(CustomUserDetails userDetails) {
+		String loginId = userDetails.getUsername();
+		// 유저 이름
+		String name = userDetails.getName();
+		// 프로필이미지
+		UserDTO userInfo = userDAO.userDetail(loginId);
+		// 미확인 메일
+		int unreadMail = mailService.unreadMailCount(loginId);
+		// 결재할 문서
+		int haveToApprove = approvalService.haveToApproveCount(loginId);
+		// 예약 수
+		int reservationCount = reservationService.resTotal(userDetails);
+
+		return new MainDto(name,userInfo,unreadMail,haveToApprove,reservationCount);
+    }
 }

@@ -131,6 +131,7 @@
     padding: 3px 10px;
 }
 #chartModalBox #orgBody .btn{
+	--bs-btn-padding-x: .75rem;
 	--bs-btn-padding-y: .25rem;
     --bs-btn-font-size: .875rem;
     margin: 4px 6px;
@@ -193,6 +194,14 @@
 /* thead와 tbody 경계선 제거 */
 #customTable thead th {
     border: none; /* thead 테두리 제거 */
+}
+
+#chartModalBox .card.user-list-style {
+	margin-bottom: 0;
+}
+
+#chartModalBox > .chartModal-content > .col-12 > .col-4 {
+	border-bottom: 1px solid #ccc;
 }
 
 /* tbody 세로선 완전히 제거 */

@@ -133,4 +133,12 @@ public class NoticeDTO extends ResponseDTO {
 		this.from_idx = from_idx;
 		this.code_name = code_name;
 	}
+
+	public NoticeDTO(String username, String from_id, String from_idx, String code_name, String subject) {
+		this.username = username;
+		this.from_id = from_id;
+		this.from_idx = from_idx;
+		this.code_name = code_name;
+		this.subject = subject;
+	}
 }

@@ -1,6 +1,7 @@
 package kr.co.porkandspoon.controller;
 
 import kr.co.porkandspoon.dao.UserDAO;
+import kr.co.porkandspoon.dto.MainDto;
 import kr.co.porkandspoon.dto.MenuDTO;
 import kr.co.porkandspoon.dto.UserDTO;
 import kr.co.porkandspoon.service.ApprovalService;
@@ -29,17 +30,11 @@ public class MainController {
 	Logger logger = LoggerFactory.getLogger(getClass());
 
 	private final MainService mainService;
-	private final MailService mailService;
-	private final ApprovalService approvalService;
 	private final UserDAO userDao;
-	private final ResevationService reservationService;
 
 	public MainController(MainService mainService, MailService mailService, ApprovalService approvalService, UserDAO userDao, ResevationService reservationService) {
 		this.mainService = mainService;
-		this.mailService = mailService;
-		this.approvalService = approvalService;
 		this.userDao = userDao;
-		this.reservationService = reservationService;
 	}
 
 	@Value("${upload.path}") String paths;
@@ -48,20 +43,13 @@ public class MainController {
 	public ModelAndView mainView(HttpSession session) {
 		ModelAndView mav = new ModelAndView("/main");
 		CustomUserDetails userDetails = (CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		String loginId = userDetails.getUsername();
-		// 미확인 메일
-		int unreadMail = mailService.unreadMailCount(loginId);
-		// 결재할 문서
-		int haveToApprove = approvalService.haveToApproveCount(loginId);
-		// 예약 수
-		int reservationCount = reservationService.resTotal(userDetails);
-		// 프로필이미지
-		UserDTO userInfo = userDao.userDetail(loginId);
-		mav.addObject("name", userDetails.getName()); 
-		mav.addObject("userInfo", userInfo); 
-		mav.addObject("unreadMail", unreadMail);
-		mav.addObject("haveToApprove", haveToApprove);
-		mav.addObject("reservationCount", reservationCount);
+
+		MainDto mainDto = mainService.getMainViewData(userDetails);
+		mav.addObject("name", mainDto.getName());
+		mav.addObject("userInfo", mainDto.getUserInfo());
+		mav.addObject("unreadMail", mainDto.getUnreadMail());
+		mav.addObject("haveToApprove", mainDto.getHaveToApprove());
+		mav.addObject("reservationCount", mainDto.getReservationCount());
 		return mav;
 	}
 	

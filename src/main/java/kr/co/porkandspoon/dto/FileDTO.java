@@ -20,6 +20,13 @@ public class FileDTO extends ResponseDTO{
 		this.new_filename = new_filename;
 		this.type = type;
 	}
+	public FileDTO(String ori_filename, String new_filename, String type, String code_name, String pk_idx) {
+		this.ori_filename = ori_filename;
+		this.new_filename = new_filename;
+		this.type = type;
+		this.code_name = code_name;
+		this.pk_idx = pk_idx;
+	}
 	
 	public FileDTO() {};
 	

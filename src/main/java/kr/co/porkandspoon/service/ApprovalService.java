@@ -1,21 +1,15 @@
 package kr.co.porkandspoon.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.co.porkandspoon.dao.ApprovalDAO;
 import kr.co.porkandspoon.dto.*;
+import kr.co.porkandspoon.util.JsonUtil;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -28,10 +22,12 @@ public class ApprovalService {
 	
 	private final ApprovalDAO approvalDAO;
 	private final AlarmService alarmService;
+	private final FileService fileService;
 
-	public ApprovalService(ApprovalDAO approvalDAO, AlarmService alarmService) {
+	public ApprovalService(ApprovalDAO approvalDAO, AlarmService alarmService, FileService fileService) {
 		this.approvalDAO = approvalDAO;
 		this.alarmService = alarmService;
+		this.fileService = fileService;
 	}
 
     @Value("${upload.path}") String paths;
@@ -63,12 +59,12 @@ public class ApprovalService {
 			// 결재라인 테이블 저장
 			approvalDAO.saveApprovalLine(approvalDTO,status);
 
-			// 게시글 이미지 옮겨 저장
-			saveEditorImg(approvalDTO);
+			// 게시글 이미지 파일 복사 저장 (임시저장 폴더 -> 저장 폴더)
+			fileService.moveFiles(approvalDTO.getFileList());
 			// 로고파일 저장
-			saveFiles(logoFile, draftIdx, true);
+			fileService.saveFiles(draftIdx, "bl001", logoFile);
 			// 첨부파일 저장
-			saveFiles(attachedFiles, draftIdx, false);
+			fileService.saveFiles(draftIdx, "df000", attachedFiles);
 		}else{
 			updateDraft(approvalDTO, attachedFiles, logoFile, "false");
 		}
@@ -91,12 +87,17 @@ public class ApprovalService {
 		approvalDAO.updateDraft(approvalDTO);
 		// 결재라인 업데이트
 		updateApprovalLines(approvalDTO);
-		// 게시글 이미지 옮겨 저장
-		saveEditorImg(approvalDTO);
+		// 게시글 이미지 파일 복사 저장 (임시저장 폴더 -> 저장 폴더)
+		fileService.moveFiles(approvalDTO.getFileList());
+
 		// 로고파일 업데이트
-		saveFiles(logoFile, draftIdx, true);
+		if(logoFile != null) {
+			fileService.saveFiles(draftIdx, "bl001", logoFile);
+		}
 		// 첨부파일 업데이트
-		saveFiles(newFiles, draftIdx, false);
+		if(newFiles != null) {
+			fileService.saveFiles(draftIdx, "df000", newFiles);
+		}
 	}
 
 	public ApprovalDTO getDraftInfo(String draft_idx) {
@@ -143,95 +144,6 @@ public class ApprovalService {
 		}
 	}
 
-	@Transactional
-	public void saveFiles(MultipartFile[] files, String draftIdx, boolean logoYn) {
-		if(files != null) {
-			for(MultipartFile file : files) {
-				if (!file.isEmpty()) {
-					saveFile(file, draftIdx, logoYn);
-				}
-			}
-		}
-	}
-
-	@Transactional
-	public void saveFile(MultipartFile file, String draftIdx, boolean logoYn) {
-		try {
-			String ori_filename = file.getOriginalFilename();
-			String ext = ori_filename.substring(ori_filename.lastIndexOf("."));
-			String new_filename = UUID.randomUUID()+ext;
-
-			// db에 저장
-			FileDTO fileDto = new FileDTO();
-			fileDto.setOri_filename(ori_filename);
-			fileDto.setNew_filename(new_filename);
-			if(logoYn) {
-				fileDto.setCode_name("bl001");
-			}else {
-				fileDto.setCode_name("df000");
-			}
-			fileDto.setPk_idx(draftIdx);
-			fileDto.setType(file.getContentType());
-			approvalDAO.fileSave(fileDto);
-
-			byte[] arr = file.getBytes();
-			// check!! 경로바꾸기
-			Path path = Paths.get(paths+new_filename);
-			Files.write(path, arr);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	@Transactional
-	public void deleteFile(String filename, String draftIdx, boolean logoYn) {
-		FileDTO fileDto = new FileDTO();
-		fileDto.setNew_filename(filename);
-		fileDto.setPk_idx(draftIdx);
-
-		// newFileName 가져오기
-		//String newFileName = approvalDAO.getNewFileName(fileDto,logoYn);
-		//fileDto.setNew_filename(newFileName);
-		// 데이터베이스에서 파일 정보 삭제
-		approvalDAO.deleteFiles(fileDto);
-
-		// 파일 삭제 (서버 폴더에서)
-		try {
-			File fileToDelete = new File(paths + filename);
-			if (fileToDelete.exists()) {
-				boolean deleted = fileToDelete.delete();  // 파일 삭제
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	// 게시글 이미지 파일 복사 저장 (임시저장 폴더 -> 저장 폴더)
-	public void saveEditorImg(ApprovalDTO approvalDTO) {
-		List<FileDTO> imgs = approvalDTO.getFileList();
-		if (imgs != null && !imgs.isEmpty()) {
-			for (FileDTO img : imgs) {
-				img.setPk_idx(approvalDTO.getDraft_idx());
-				img.setCode_name("draft");
-				img.setType("img");
-
-				// 복사할 파일
-				File srcFile = new File(tem_path + img.getNew_filename());
-				// 목적지 파일
-				File descDir = new File(paths + img.getNew_filename());
-				try {
-					Path filePath = Paths.get(paths, img.getNew_filename());
-					if(Files.exists(filePath)) {
-						// 파일 복사
-						Files.copy(srcFile.toPath(), descDir.toPath());
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	}
-
 	// 문서번호 생성
 	@Transactional
 	public String generateDocumentNumber(String target_type) {
@@ -245,29 +157,6 @@ public class ApprovalService {
 		Integer maxNumber = approvalDAO.getMaxNumberForDate(prefix+date);
 		int newNumber = (maxNumber == null) ? 1 : maxNumber + 1;
 		return prefix + date + String.format("%04d", newNumber);
-	}
-
-	@Transactional
-	public void deleteFiles(List<FileDTO> deleteFiles, String draftIdx) {
-		for (FileDTO file : deleteFiles) {
-			if(file != null) {
-				String filePath = file.getNew_filename();
-				// 파일 삭제 (서버 폴더에서)
-				try {
-					File fileToDelete = new File(paths + filePath);
-					if (fileToDelete.exists()) {
-						boolean deleted = fileToDelete.delete();  // 파일 삭제
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-
-				// 데이터베이스에서 파일 정보 삭제
-				file.setPk_idx(draftIdx);
-				approvalDAO.deleteFiles(file);
-			}
-		}
-
 	}
 
 	public FileDTO getLogoFile(String draft_idx) {
@@ -299,48 +188,17 @@ public class ApprovalService {
 		return approvalRow > 0 && draftRow > 0;
 	}
 
-	// 기안문 결재
-	public int ApprovalDraft(ApprovalDTO approvalDTO) {
-		approvalDTO.setApproval_date(CreateNowDateTime());
-		return approvalDAO.ApprovalDraft(approvalDTO);
-	}
-
-	// 로그인유저 부서정보
-	public String getUserDept(String loginId) {
-		return approvalDAO.getUserDept(loginId);
-	}
-
-	// 열람권한체크
-	public boolean isDraftSender(String draft_idx, String loginId) {
-		return approvalDAO.isDraftSender(draft_idx,loginId) != null;
-	}
-	// 열람권한체크
-	public ApprovalDTO approverStatus(String draft_idx, String loginId) {
-		return approvalDAO.approverStatus(draft_idx,loginId);
-	}
-	// 열람권한체크
-	public boolean isCooperDept(String draft_idx, String userDept) {
-		return approvalDAO.isCooperDept(draft_idx,userDept) != null;
-	}
-	// 열람권한체크
-	public boolean isApproveDept(String draft_idx, String userDept) {
-		return approvalDAO.isApproveDept(draft_idx,userDept) != null;
-	}
-
-	public String getDraftStatus(String draft_idx) {
-		return approvalDAO.getDraftStatus(draft_idx);
-	}
-
-	public int changeStatusToRead(String loginId, String draft_idx) {
-		return approvalDAO.changeStatusToRead(loginId, draft_idx);
-	}
-
-	public List<String> otherApproversStatus(String draft_idx, String loginId) {
-		return approvalDAO.otherApproversStatus(draft_idx,loginId);
-	}
-
-	public int approvalRecall(String draft_idx) {
-		return approvalDAO.approvalRecall(draft_idx);
+	public boolean approvalRecall(String draft_idx, String loginId) {
+		boolean result = false;
+		// 기안자여부
+		boolean isDraftSender = isDraftSender(draft_idx,loginId);
+		// 기안문 결재진행중 여부
+		boolean ongoingApproval = getDraftStatus(draft_idx).equals("sd");
+		if(isDraftSender && ongoingApproval) {
+			approvalDAO.approvalRecall(draft_idx);
+			result = true;
+		}
+		return result;
 	}
 
 	public int changeStatusToApproved(String draft_idx) {
@@ -349,13 +207,29 @@ public class ApprovalService {
 
 	@Transactional
 	public boolean changeStatusToSend(String draft_idx, String loginId) {
-		int result2 = approvalDAO.changeStatusToSend(draft_idx);
-		int result = approvalDAO.changeSenderStatus(draft_idx,loginId);
-		return result > 0 && result2 > 0;
+		boolean result = false;
+		// 기안자여부
+		boolean isDraftSender = isDraftSender(draft_idx,loginId);
+		if(isDraftSender) {
+			int draftResult = approvalDAO.changeStatusToSend(draft_idx);
+			int apprLineResult = approvalDAO.changeSenderStatus(draft_idx,loginId);
+			result = draftResult > 0 && apprLineResult > 0;
+		}
+		return result;
 	}
 
-	public int changeStatusToDelete(String draft_idx) {
-		return approvalDAO.changeStatusToDelete(draft_idx);
+	public boolean changeStatusToDelete(String draft_idx, String loginId) {
+		boolean result = false;
+		// 기안자여부
+		boolean isDraftSender = isDraftSender(draft_idx,loginId);
+		// 기안문 상태 확인(임시저장 or 회수)
+		String draftStatus = getDraftStatus(draft_idx);
+		boolean deletable = draftStatus.equals("sv") || draftStatus.equals("ca");
+		if(isDraftSender && deletable) {
+			approvalDAO.changeStatusToDelete(draft_idx);
+			result = true;
+		}
+		return result;
 	}
 
 
@@ -368,49 +242,6 @@ public class ApprovalService {
 		params.put("offset", offset);
 
 		return approvalDAO.getApprovalMyListData(params);
-	}
-
-	@Transactional
-	public boolean setApprLineBookmark(Map<String, Object> params) {
-		String bookmarkIdx = "";
-		if(params.get("line_idx") != null && !params.get("line_idx").equals("")) {
-			bookmarkIdx = (String) params.get("line_idx");
-		}else {
-			bookmarkIdx = approvalDAO.getMaxBookmarkIdx();
-		}
-		params.put("bookmarkIdx", bookmarkIdx);
-
-		List<String> approvalLines = (List<String>) params.get("approvalLines");
-		for (String line : approvalLines) {
-			System.out.println("!!!!!!Approval Line: " + line);
-		}
-		return approvalDAO.setApprLineBookmark(params) > 0;
-	}
-
-	public List<ApprovalDTO> getLineBookmark(Map<String, Object> params) {
-		if(params.get("page")!=null && params.get("cnt") !=null) {
-			int page_ = Integer.parseInt((String) params.get("page"));
-			int cnt_ = Integer.parseInt((String) params.get("cnt"));
-			int limit = cnt_;
-			int offset = (page_ - 1) * cnt_;
-			params.put("limit", limit);
-			params.put("offset", offset);
-		}
-		return approvalDAO.getLineBookmark(params);
-	}
-
-	//북마크 삭제
-	public boolean deleteBookmark(String lineIdx, String loginId) {
-		return approvalDAO.deleteBookmark(lineIdx, loginId) > 0;
-	}
-
-	//결재할 기안문 수
-	public int haveToApproveCount(String loginId) {
-		return approvalDAO.haveToApproveCount(loginId);
-	}
-
-	public ApprovalDTO userApprovalInfo(ApprovalDTO approvalDTO) {
-		return approvalDAO.userApprovalInfo(approvalDTO);
 	}
 
 	@Transactional
@@ -452,33 +283,23 @@ public class ApprovalService {
 		/* 새 로고파일 첨부시 */
 		if (logoFile != null && logoFile.length > 0) {
 			// 기존 로고 삭제
-			List<FileDTO> logoDtoList = new ArrayList<>();
 			FileDTO logoFileDto = getLogoFile(draftIdx);
-			logoDtoList.add(logoFileDto);
-			deleteFiles(logoDtoList, draftIdx);
+			fileService.deleteFiles(draftIdx, "bl001", logoFileDto);
 		}
 
 		/* 일반 첨부파일 */
 		// 삭제할 기존 첨부파일 (json -> List<String> 변환)
-		ObjectMapper objectMapper = new ObjectMapper();
-		List<String> deletedFiles = new ArrayList<>();
-		try {
-			deletedFiles = objectMapper.readValue(deletedFilesJson, new TypeReference<List<String>>() {});
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException("파일 ID JSON 파싱 실패", e);
-		}
+		List<String> deletedFiles = JsonUtil.jsonToList(deletedFilesJson, String.class);
 		// 삭제 처리
 		for (String file : deletedFiles) {
-			deleteFile(file, draftIdx,false);
+			FileDTO fileDto = new FileDTO();
+			fileDto.setNew_filename(file);
+			fileService.deleteFiles(draftIdx, "df000", fileDto);
 		}
 
 		// 새로 업로드된 파일 저장, db 데이터 저장
 		updateDraft(approvalDTO, newFiles, logoFile, reapproval);
 
-		if(reapproval.equals("true")){
-			//수정 알림전송
-
-		}
 		return approvalDTO.getDraft_idx();
 	}
 
@@ -527,6 +348,117 @@ public class ApprovalService {
 
 		DraftPermissionResultDTO result = new DraftPermissionResultDTO(permitted, message, isDraftSender, approverStatus, approverTurn);
 		return result;
+	}
+
+	public boolean approvalDraft(ApprovalDTO approvalDTO) {
+		boolean result = false;
+		// 결재라인 테이블 결재자 상태코드 변경
+		// 기안문 결재
+		approvalDTO.setApproval_date(CreateNowDateTime());
+		int approvalRow = approvalDAO.ApprovalDraft(approvalDTO);
+
+		// 마지막 결재자인 경우 기안문테이블 상태코드 변경(결재완료)
+		ApprovalDTO approvalInfo = userApprovalInfo(approvalDTO);
+		//결재자 결재 순서
+		int orderNum = approvalInfo.getOrder_num();
+		//총 결재자 수
+		int totalCount = approvalInfo.getApproval_line_count();
+		if(orderNum == (totalCount-1)) {
+			// 마지막 결재자인 경우
+			changeStatusToApproved(approvalDTO.getDraft_idx());
+		}else {
+			// 마지막 결재자가 아닌경우
+			// 다음 사람에게 요청 알림
+			NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(), approvalDTO.getDraft_idx(), "ml007");
+			alarmService.saveAlarm(noticedto);
+
+			// 기안자에게 승인 요청 알림
+			NoticeDTO noticedto2 = new NoticeDTO(approvalDTO.getUsername(), approvalDTO.getDraft_idx(), "ml008");
+			alarmService.saveAlarm(noticedto2);
+		}
+
+		if(approvalRow > 0) {
+			result = true;
+		}
+		return result;
+	}
+
+
+	@Transactional
+	public boolean setApprLineBookmark(Map<String, Object> params) {
+		String bookmarkIdx = "";
+		if(params.get("line_idx") != null && !params.get("line_idx").equals("")) {
+			bookmarkIdx = (String) params.get("line_idx");
+		}else {
+			bookmarkIdx = approvalDAO.getMaxBookmarkIdx();
+		}
+		params.put("bookmarkIdx", bookmarkIdx);
+
+		List<String> approvalLines = (List<String>) params.get("approvalLines");
+		for (String line : approvalLines) {
+			System.out.println("!!!!!!Approval Line: " + line);
+		}
+		return approvalDAO.setApprLineBookmark(params) > 0;
+	}
+
+	public List<ApprovalDTO> getLineBookmark(Map<String, Object> params) {
+		if(params.get("page")!=null && params.get("cnt") !=null) {
+			int page_ = Integer.parseInt((String) params.get("page"));
+			int cnt_ = Integer.parseInt((String) params.get("cnt"));
+			int limit = cnt_;
+			int offset = (page_ - 1) * cnt_;
+			params.put("limit", limit);
+			params.put("offset", offset);
+		}
+		return approvalDAO.getLineBookmark(params);
+	}
+
+	//북마크 삭제
+	public boolean deleteBookmark(String lineIdx, String loginId) {
+		return approvalDAO.deleteBookmark(lineIdx, loginId) > 0;
+	}
+
+	//결재할 기안문 수
+	public int haveToApproveCount(String loginId) {
+		return approvalDAO.haveToApproveCount(loginId);
+	}
+
+	public ApprovalDTO userApprovalInfo(ApprovalDTO approvalDTO) {
+		return approvalDAO.userApprovalInfo(approvalDTO);
+	}
+
+	// 로그인유저 부서정보
+	public String getUserDept(String loginId) {
+		return approvalDAO.getUserDept(loginId);
+	}
+
+	// 열람권한체크
+	public boolean isDraftSender(String draft_idx, String loginId) {
+		return approvalDAO.isDraftSender(draft_idx,loginId) != null;
+	}
+	// 열람권한체크
+	public ApprovalDTO approverStatus(String draft_idx, String loginId) {
+		return approvalDAO.approverStatus(draft_idx,loginId);
+	}
+	// 열람권한체크
+	public boolean isCooperDept(String draft_idx, String userDept) {
+		return approvalDAO.isCooperDept(draft_idx,userDept) != null;
+	}
+	// 열람권한체크
+	public boolean isApproveDept(String draft_idx, String userDept) {
+		return approvalDAO.isApproveDept(draft_idx,userDept) != null;
+	}
+
+	public String getDraftStatus(String draft_idx) {
+		return approvalDAO.getDraftStatus(draft_idx);
+	}
+
+	public int changeStatusToRead(String loginId, String draft_idx) {
+		return approvalDAO.changeStatusToRead(loginId, draft_idx);
+	}
+
+	public List<String> otherApproversStatus(String draft_idx, String loginId) {
+		return approvalDAO.otherApproversStatus(draft_idx,loginId);
 	}
 
 }

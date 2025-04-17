@@ -21,8 +21,6 @@ public interface ApprovalDAO {
 
 	List<DeptDTO> getDeptList();
 
-	int fileSave(FileDTO fileDto);
-
 	int getDraftIdx();
 
 	int saveApprovalLine(ApprovalDTO approvalDTO, String status);
@@ -36,8 +34,6 @@ public interface ApprovalDAO {
 	int updateDraft(ApprovalDTO approvalDTO);
 
 	int removeApprovalLine(String draftIdx);
-
-	int deleteFiles(FileDTO file);
 
 	List<String> getExistingFile(String draftIdx);
 
@@ -100,8 +96,6 @@ public interface ApprovalDAO {
 	void batchUpdateApprovalLines(@Param("list") List<ApprovalDTO> toUpdate);
 
 	void deleteApprovalLines(String draftIdx);
-
-	void deleteFiles(String draftIdx, List<String> filesToDelete, boolean logoYn);
 
 	String getNewFileName(FileDTO fileDto, boolean logoYn);
 }

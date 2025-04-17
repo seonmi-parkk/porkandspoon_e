@@ -224,15 +224,6 @@
 		VALUES 
 			(#{code_name}, #{ori_filename}, #{new_filename}, #{type}, #{pk_idx})
 	</insert>
-
-	<delete id="deleteFile" parameterType="list">
-		<foreach collection="filesToDelete" item="fileName" separator=";">
-			DELETE FROM file
-				WHERE pk_idx = #{draftIdx}
-				AND ori_filename = #{fileName}
-				AND code_name = #{logoYn}
-		</foreach>
-	</delete>
 	
 	<insert id="saveExistingFiles">
 		INSERT INTO file (code_name, ori_filename, new_filename, type, pk_idx)
@@ -274,13 +265,6 @@
 			WHERE code_name = 'df000' 
 			AND pk_idx = #{draft_idx}
 	</select>
-	
-	<delete id="deleteFiles" parameterType="kr.co.porkandspoon.dto.FileDTO">
-		DELETE FROM file
-			WHERE code_name IN ('df000','bl001')
-			AND pk_idx = #{pk_idx}
-			AND new_filename = #{new_filename}
-	</delete>
 
 	<select id="getNewFileName" parameterType="kr.co.porkandspoon.dto.FileDTO">
 		SELECT new_filename FROM file
