@@ -268,26 +268,6 @@ public class ApprovalController {
 		return result;
 	}
 
-	// filePond 이미지 미리보기
-	@GetMapping("/filepond/{new_filename}")
-	public ResponseEntity<Resource> filePondPreview(@PathVariable String new_filename) {
-		Path path = Paths.get(paths + "/" + new_filename);
-		Resource resource = new FileSystemResource(path.toFile());
-
-        String contentType = null;
-        try {
-            contentType = Files.probeContentType(path);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        if (contentType == null) contentType = "application/octet-stream"; // fallback
-
-		return ResponseEntity.ok()
-				.contentType(MediaType.parseMediaType(contentType))
-				.body(resource);
-	}
-
-
 	// 기안문 정보 가져오기
 	private void getDetailInfo(String draft_idx, ModelAndView mav) {
 		ApprovalDTO DraftInfo = approvalService.getDraftInfo(draft_idx);

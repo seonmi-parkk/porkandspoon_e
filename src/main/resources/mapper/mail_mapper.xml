@@ -144,30 +144,6 @@
 		]]>
 	</select>
 	
-<!-- 	<select id="getMailInfo" resultType="kr.co.porkandspoon.dto.MailDTO">
-		SELECT 
-			m.*
-			,mr.username 
-		FROM 
-			mail m 
-		LEFT JOIN 
-			mail_receive mr 
-			ON m.idx = mr.idx 
-		WHERE 
-			m.idx = #{idx}
-	</select> -->
-	
-<!-- 	<select id="isBookmarked" resultType="int">
-		SELECT 
-			COUNT(idx) 
-		FROM 
-			mail_bookmark 
-		WHERE 
-			idx = #{idx} 
-			AND 
-			username = #{loginId}
-	</select> -->
-	
 	<select id="getReceivedMailUseFromDate" resultType="String">
 		SELECT use_from_date 
 		FROM mail_receive 
@@ -588,14 +564,14 @@
 		AND 
 			sender = #{loginId}
 	</update>
-	
-	
+
+
 	<insert id="setDeleveryExistingImage" parameterType="String">
 		INSERT INTO 
 			file (code_name, ori_filename, new_filename, type, pk_idx)
 			SELECT code_name, ori_filename, new_filename, type, #{mailIdx}
 			FROM file 
-			WHERE new_filename = #{fileId} 
+			WHERE new_filename = #{fileName}
 			AND pk_idx = ${originalIdx}
 			AND code_name = 'ma001'
 	</insert>

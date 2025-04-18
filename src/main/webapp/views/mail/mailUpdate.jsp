@@ -1,5 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -295,6 +296,7 @@
 						<div class="cont-body">
 							<form id="mailWriteForm">
 								<input type="hidden" name="idx"/>
+								<input type="hidden" name="updateStatus" value="${status}"/>
 								<div class="line">
 									<div class="flex between">
 										<div class="flex receivers-area">
@@ -423,34 +425,58 @@
 	// 제목
 	$('input[name="title"]').val(titleTag+'${mailInfo.title}');
 
+
+	// 기존 파일 불러오기
+	const attachedFiles = [
+		<c:forEach var="file" items="${attachedFiles}" varStatus="status">
+		{
+			source: "<c:out value='${file.new_filename}'/>", // 고유 식별값 (파일 로드 시 서버에 넘길 값)
+			options: {
+				type: 'local',
+				file: {
+					name: "<c:out value='${file.ori_filename}'/>",
+					type: "image/jpeg",
+					size: 123456
+				},
+				metadata: {
+					poster: "/file/filepond/${file.new_filename}" // 이미지일 경우 썸네일
+				}
+			}
+		}<c:if test="${!status.last}">, </c:if>
+		</c:forEach>
+	];
+
+	// 삭제된 첨부파일 id
+	let deletedFiles = [];
+
 	// FilePond 등록
-   FilePond.registerPlugin();
-   const attachedFilesPond = FilePond.create(document.querySelector('input.filepond-multiple'), {
-	    allowMultiple: true,
-	    maxFiles: 5,
-	    allowImagePreview: false,
-	    labelIdle: '파일을 드래그하거나 클릭하여 업로드하세요 (최대 3개)',
-	    instantUpload: false
-   });
-	
-	 // 서버에서 파일 목록을 불러와 FilePond에 설정
-    fetch('/mail/getUploadedFiles/${mailInfo.idx}')
-        .then(response => response.json())
-        .then(files => {
-            FilePond.setOptions({
-                files: files.map(file => ({
-                    source: file.new_filename,  // 서버에서 파일 식별자 (ID 또는 URL)
-                    options: {
-                        type: 'local',
-                        file: {
-                            name: file.ori_filename,
-                            size: file.file_size,
-                            type: file.type
-                        }
-                    }
-                }))
-            });
-      });
+	FilePond.registerPlugin();
+	const attachedFilesPond = FilePond.create(document.querySelector('input.filepond-multiple'), {
+		allowImagePreview: true,
+		allowProcess: false,     // ✅ 중요! 썸네일만 보고 업로드는 막는 역할
+		files: attachedFiles,
+		allowMultiple: true,
+		maxFiles: 5,
+		labelIdle: '파일을 드래그하거나 클릭하여 업로드하세요 (최대 3개)',
+		allowImagePreview: false,
+		allowRevert: true,
+		instantUpload: false,
+		server: {
+			// 썸네일 이미지 로딩용
+			load: (source, load, error, progress, abort, headers) => {
+				console.log("📸 썸네일 요청 source:", source);
+				fetch(`/mail/filepond/${source}`)
+						.then(res => res.blob())
+						.then(load)
+						.catch(error);
+			}
+		},
+		onremovefile: (error, file) => {
+			// 삭제된 파일명 저장
+			deletedFiles.push({'new_filename' : file.source});
+			//console.log("deletedFiles :", deletedFiles);
+		}
+	});
 	
 	 
 	// 전송
@@ -473,13 +499,23 @@
 	    	});
 	    } */
 	    // 첨부파일 추가
-	    const existingFiles = attachedFilesPond.getFiles().filter(file => file.origin === FilePond.FileOrigin.LOCAL);
+	    //const existingFiles = attachedFilesPond.getFiles().filter(file => file.origin === FilePond.FileOrigin.LOCAL);
 	    const newFiles = attachedFilesPond.getFiles().filter(file => file.origin !== FilePond.FileOrigin.LOCAL);
+		console.log("newFiles : ", newFiles);
 
 	    // 기존 파일의 ID만 서버로 전송
-	    existingFiles.forEach(file => {
-	    	formData.append('existingFileIds', file.source); 
-	    });
+	    //existingFiles.forEach(file => {
+	    //	formData.append('existingFileIds', file.source);
+	    //});
+		const existingFiles = attachedFiles.map(file => file.source);
+
+		// 삭제된 파일 ID 전송
+		formData.append("deletedFiles", JSON.stringify(deletedFiles));
+
+		// 기존 파일 ID 전송 (전달의 경우)
+		//formData.append("existingFiles", JSON.stringify(attachedFiles.map(file => file.source)));
+		formData.append("existingFiles", JSON.stringify(existingFiles));
+
 	    //새로운 파일 정보
 	    newFiles.forEach(file => {
 	    	formData.append('attachedFiles', file.file);  // 새로운 파일을 서버로 전송

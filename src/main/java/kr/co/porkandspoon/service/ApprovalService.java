@@ -137,7 +137,6 @@ public class ApprovalService {
 			line.setOrder_num(i);
 			newApprovalLines.add(line);
 		}
-
 		if(!newApprovalLines.isEmpty()) {
 			approvalDAO.batchInsertApprovalLines(newApprovalLines);
 
@@ -291,10 +290,12 @@ public class ApprovalService {
 		// 삭제할 기존 첨부파일 (json -> List<String> 변환)
 		List<String> deletedFiles = JsonUtil.jsonToList(deletedFilesJson, String.class);
 		// 삭제 처리
-		for (String file : deletedFiles) {
-			FileDTO fileDto = new FileDTO();
-			fileDto.setNew_filename(file);
-			fileService.deleteFiles(draftIdx, "df000", fileDto);
+		if(deletedFiles != null ) {
+			for (String file : deletedFiles) {
+				FileDTO fileDto = new FileDTO();
+				fileDto.setNew_filename(file);
+				fileService.deleteFiles(draftIdx, "df000", fileDto);
+			}
 		}
 
 		// 새로 업로드된 파일 저장, db 데이터 저장

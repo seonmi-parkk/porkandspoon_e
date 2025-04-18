@@ -59,7 +59,7 @@ public interface MailDAO {
 
 	String getReceivedMailBookmark(String idx, String loginId);
 
-	int setDeleveryExistingImage(String mailIdx, String fileId, String originalIdx);
+	int setDeleveryExistingImage(String mailIdx, String fileName, String originalIdx);
 
 	int savedMailCount(String loginId);
 

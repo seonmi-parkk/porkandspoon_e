@@ -24,6 +24,8 @@ public class MailDTO {
 	private String username;
 	private String is_read;
 	private String read_date;
+
+	private String updateStatus;
 	
 	// 이름
 	private String name;
@@ -173,4 +175,11 @@ public class MailDTO {
         this.originalIdx = originalIdx;
     }
 
+    public String getUpdateStatus() {
+        return updateStatus;
+    }
+
+    public void setUpdateStatus(String updateStatus) {
+        this.updateStatus = updateStatus;
+    }
 };

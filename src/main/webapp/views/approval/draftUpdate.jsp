@@ -562,7 +562,7 @@
                     size: 123456
                 },
                 metadata: {
-                    poster: "/approval/filepond/${file.new_filename}" // 이미지일 경우 썸네일
+                    poster: "/file/filepond/${file.new_filename}" // 이미지일 경우 썸네일
                 }
             }
         }<c:if test="${!status.last}">, </c:if>
@@ -600,9 +600,9 @@
     });
 
     let attachedFilesPond = FilePond.create(document.querySelector('input[name="newAttachedFiles"]'), {
-        allowImagePreview: true,  // ✅ 썸네일 미리보기 명시적으로 활성화
+        allowImagePreview: true,  // 썸네일 미리보기 명시적으로 활성화
         imagePreviewHeight: 100,  // 선택 사항
-        allowProcess: false,     // ✅ 중요! 썸네일만 보고 업로드는 막는 역할
+        allowProcess: false,     // 중요! 썸네일만 보고 업로드는 막는 역할
         files: attachedFiles,
         allowMultiple: true,
         maxFiles: 3,
@@ -612,8 +612,8 @@
         server: {
             // 썸네일 이미지 로딩용
             load: (source, load, error, progress, abort, headers) => {
-                console.log("📸 썸네일 요청 source:", source);  // ✅ 호출돼야 정상
-                fetch(`/approval/filepond/${source}`)
+                console.log("썸네일 요청 source:", source);
+                fetch(`/file/filepond/${source}`)
                     .then(res => res.blob())
                     .then(load)
                     .catch(error);

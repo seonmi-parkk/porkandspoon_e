@@ -10,13 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.ModelAndView;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
@@ -46,7 +41,7 @@ public class MailService {
 	}
 
 	@Transactional
-	public String saveMail(MailDTO mailDTO, HashSet<String> username, MultipartFile[] attachedFiles, List<String> existingFileIds , String status) {
+	public String saveMail(MailDTO mailDTO, HashSet<String> username, MultipartFile[] attachedFiles, List<String> existingFileNames , FileDTO[] deletedFiles, String status) {
 		// summernote 이미지 파일 복사 저장 (임시저장 -> 저장 폴더)
         List<FileDTO> imgs = mailDTO.getFileList();
 		fileService.moveFiles(imgs);
@@ -60,18 +55,22 @@ public class MailService {
 			// 메일수신 정보저장
 			mailDAO.saveMailReceiver(mailIdx, username);
 			// 첨부파일 저장
-			saveFile(attachedFiles, mailIdx);
+			fileService.saveFiles(mailIdx, "ma001", attachedFiles);
+			// 전달의 경우 첨부 파일 처리
+			if(mailDTO.getUpdateStatus() != null && mailDTO.getUpdateStatus().equals("delivery")) {
+				deliverMail(existingFileNames, mailIdx, mailDTO.getOriginalIdx());
+				// 삭제된 첨부파일 처리
+				for(FileDTO fileDTO : deletedFiles) {
+					fileDTO.setCode_name("ma001");
+					fileDTO.setPk_idx(mailIdx);
+					fileService.deleteFileFromDB(fileDTO);
+				}
+				fileService.deleteFiles(mailIdx, "ma001", deletedFiles);
+			}
         }else{
 			// 이미 임시저장된 경우
-			updateMail(mailDTO, username, attachedFiles);
+			updateMail(mailDTO, username, attachedFiles, existingFileNames, deletedFiles);
 		}
-
-        // 전달의 경우 기존 첨부파일 처리
-        if(existingFileIds != null) {
-        	for (String fileId : existingFileIds) {
-				mailDAO.setDeleveryExistingImage(mailIdx, fileId, mailDTO.getOriginalIdx());
-			}
-        }
         
         // 메일 수신 알림
         if(status.equals("sd")) {
@@ -83,7 +82,17 @@ public class MailService {
         return mailIdx;
 	}
 
-	private void updateMail(MailDTO mailDTO, HashSet<String> username, MultipartFile[] attachedFiles) {
+	public void deliverMail(List<String> existingFileNames, String mailIdx, String OriginalMailIdx) {
+		// 전달의 경우 기존 첨부파일 처리
+		if(existingFileNames != null) {
+			for (String fileName : existingFileNames) {
+				String cleanedFileName = fileName.replaceAll("[\\[\\]\"]", "").trim();
+				mailDAO.setDeleveryExistingImage(mailIdx, cleanedFileName, OriginalMailIdx);
+			}
+		}
+	}
+
+	private void updateMail(MailDTO mailDTO, HashSet<String> username, MultipartFile[] attachedFiles, List<String> existingFileNames, FileDTO[] deletedFiles) {
 		String mailIdx = mailDTO.getIdx();
 		// 메일 저장
 		mailDAO.updateMail(mailDTO);
@@ -91,8 +100,14 @@ public class MailService {
 		mailDAO.removeMailReceiver(mailIdx);
 		// 메일수신 정보저장
 		mailDAO.saveMailReceiver(mailIdx, username);
+		// 전달의 경우 첨부 파일 처리
+		if(mailDTO.getUpdateStatus().equals("delivery")) {
+			deliverMail(existingFileNames, mailIdx, mailDTO.getOriginalIdx());
+		}
+		// 삭제된 첨부파일 처리
+		fileService.deleteFiles(mailIdx, "ma001", deletedFiles);
 		// 첨부파일 저장
-		saveFile(attachedFiles, mailIdx);
+		fileService.saveFiles(mailIdx, "ma001", attachedFiles);
 	}
 
 	public Map<String, Object> mailDetailView(String idx, String loginId) {
@@ -170,18 +185,6 @@ public class MailService {
 			}
 		}
 		return fileList;
-	}
-
-	public MailDTO getMailInfo(String idx) {
-		return mailDAO.getMailInfo(idx);
-	}
-
-	public boolean isBookmarked(String idx, String loginId) {
-		return mailDAO.isBookmarked(idx,loginId) > 0;
-	}
-
-	public List<FileDTO> getAttachedFiles(String idx) {
-		return mailDAO.getAttachedFiles(idx);
 	}
 
 	public boolean updateBookmark(Map<String, String> params) {
@@ -330,33 +333,6 @@ public class MailService {
 		return result;
 	}
 
-	private void saveFile(MultipartFile[] attachedFiles, String mailIdx) {
-		if(attachedFiles != null) {
-			for(MultipartFile file : attachedFiles) {
-				try {
-					if(!file.isEmpty()) {
-						String ori_filename = file.getOriginalFilename();
-						String ext = ori_filename.substring(ori_filename.lastIndexOf("."));
-						String new_filename = UUID.randomUUID()+ext;
-
-						int existingFile = mailDAO.checkExistingFile(mailIdx, ori_filename);
-						if (existingFile == 0) {
-							// db에 저장
-							FileDTO fileDto = new FileDTO(ori_filename, new_filename, file.getContentType(), "ma001", mailIdx);
-							mailDAO.fileSave(fileDto);
-
-							byte[] arr = file.getBytes();
-							Path path = Paths.get(paths+new_filename);
-							Files.write(path, arr);
-						}
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	}
-
 	public Map<String, Object> deliverMail(Map<String, String> params) {
 		Map<String, Object> result = new HashMap<>();
 		// 권한 체크
@@ -367,11 +343,11 @@ public class MailService {
 
 		if (isSender || isReceiver) {
 			// 메일 정보
-			MailDTO mailInfo = getMailInfo(params.get("idx"));
+            result.put("mailInfo", getMailInfo(params.get("idx")));
+            // 첨부파일 정보
+			result.put("attachedFiles", fileService.getAttachedFiles(params.get("idx"),"ma001"));
 			//임시보관 메일 수
-			int savedMailCount = savedMailCount(params.get("loginId"));
-			result.put("mailInfo", mailInfo);
-			result.put("savedMailCount", savedMailCount);
+			result.put("savedMailCount", savedMailCount(params.get("loginId")));
 		}
 
 		return result;
@@ -392,6 +368,18 @@ public class MailService {
 			result = mailResult > 0 && mailReceiveResult > 0;
 		}
 		return result;
+	}
+
+	public MailDTO getMailInfo(String idx) {
+		return mailDAO.getMailInfo(idx);
+	}
+
+	public boolean isBookmarked(String idx, String loginId) {
+		return mailDAO.isBookmarked(idx,loginId) > 0;
+	}
+
+	public List<FileDTO> getAttachedFiles(String idx) {
+		return mailDAO.getAttachedFiles(idx);
 	}
 
 	public boolean changeToRead(List<String> idxList, String loginId) {

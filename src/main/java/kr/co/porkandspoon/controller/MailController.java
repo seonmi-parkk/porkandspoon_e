@@ -20,13 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.TextStyle;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/mail")
@@ -75,19 +69,21 @@ public class MailController {
 		return mav;
 	}
 
-	// 메일 발송
+	// 메일 발송 / 임시저장 / 수정
 	@Transactional
 	@PostMapping(value="/write/{status}")
-	public Map<String, Object> MailWrite(@PathVariable String status, @RequestPart(value="attachedFiles", required = false) MultipartFile[] attachedFiles, @RequestParam(value="existingFileIds", required = false) List<String> existingFileIds, @RequestParam("imgsJson") String imgsJson, @ModelAttribute MailDTO mailDTO, @RequestParam HashSet<String> username, @AuthenticationPrincipal UserDetails userDetails) {
+	public Map<String, Object> MailWrite(@PathVariable String status, @RequestPart(value="attachedFiles", required = false) MultipartFile[] attachedFiles, @RequestParam(value="existingFiles", required = false) List<String> existingFileNames, @RequestParam("imgsJson") String imgsJson, @RequestParam(value="deletedFiles", required = false) String deletedFiles, @ModelAttribute MailDTO mailDTO, @RequestParam HashSet<String> username, @AuthenticationPrincipal UserDetails userDetails) {
 		Map<String, Object> result = new HashMap<String, Object>();
 		mailDTO.setSender(userDetails.getUsername());
 		mailDTO.setSend_status(status);
 
 		// JSON 문자열을 FileDTO 리스트로 변환
         List<FileDTO> imgs = JsonUtil.jsonToList(imgsJson, FileDTO.class);
-		mailDTO.setFileList(imgs);  // 변환한 이미지 리스트를 DTO에 설정
+		FileDTO[] deletedFileArr = JsonUtil.jsonToList(deletedFiles, FileDTO.class).toArray(new FileDTO[0]);
 
-        String mailIdx = mailService.saveMail(mailDTO, username, attachedFiles, existingFileIds, status);
+		mailDTO.setFileList(imgs);
+
+        String mailIdx = mailService.saveMail(mailDTO, username, attachedFiles, existingFileNames, deletedFileArr, status);
         result.put("mailIdx", mailIdx);
         result.put("status", status);
 		return result;
@@ -203,7 +199,7 @@ public class MailController {
 		return result;
 	}
 	
-	// 전달/답장
+	// 수정 & 전달/답장 view
 	@GetMapping(value="/prepareMail/{status}/{idx}")
 	public ModelAndView deliverMail(@PathVariable String status, @PathVariable String idx, @AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response){
 		ModelAndView mav = new ModelAndView("redirect:/");
@@ -217,6 +213,7 @@ public class MailController {
 	    if ((boolean) result.get("isSender") || (boolean) result.get("isReceiver")) {
 	    	mav = new ModelAndView("/mail/mailUpdate");
 	    	mav.addObject("mailInfo", result.get("mailInfo"));
+	    	mav.addObject("attachedFiles", result.get("attachedFiles"));
 	    	mav.addObject("status", status);
 	    	//임시보관 메일 수
 			mav.addObject("savedMailCount", result.get("savedMailCount"));
