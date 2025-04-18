@@ -16,4 +16,6 @@ public interface FileDAO {
 	int saveFile(FileDTO fileDto);
 
 	int deleteFile(FileDTO file);
+
+	List<FileDTO> getAttachedFiles(String draft_idx, String code_name);
 }

@@ -54,17 +54,11 @@ public class FileService {
         fileDAO.saveFile(fileDTO);
     }
 
-//    // 서버 저장 + DB 저장 통합 (파일 1개)
-//    public FileDTO saveSingleFile(MultipartFile file, String code_name, String pk_idx) throws IOException {
-//        FileDTO fileDTO = saveFileToServer(file);
-//        saveFileToDB(fileDTO, code_name, pk_idx);
-//        return fileDTO;
-//    }
-
     // 여러 개 파일 저장
     public void saveFiles(String pk_idx, String code_name, MultipartFile... files) {
-        List<Path> savedPaths = new ArrayList<>();
+        if (files == null || files.length == 0) return;
 
+        List<Path> savedPaths = new ArrayList<>();
         for (MultipartFile file : files) {
             if (!file.isEmpty()) {
                 try {
@@ -107,39 +101,14 @@ public class FileService {
         }
     }
 
-    // 파일 삭제
-//    @Transactional
-//    public void deleteFiles(String draftIdx, String codeName, FileDTO... deleteFiles) {
-//        for (FileDTO file : deleteFiles) {
-//            if(file != null) {
-//                String filePath = file.getNew_filename();
-//                // 파일 삭제 (서버 폴더에서)
-//                try {
-//                    File fileToDelete = new File(paths + filePath);
-//                    if (fileToDelete.exists()) {
-//                        boolean deleted = fileToDelete.delete();  // 파일 삭제
-//                    }
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//
-//                // 데이터베이스에서 파일 정보 삭제
-//                file.setPk_idx(draftIdx);
-//                file.setCode_name(codeName);
-//                fileDAO.deleteFile(file);
-//            }
-//        }
-
-//    }
-
-
     @Transactional
     public void deleteFiles(String draftIdx, String codeName, FileDTO... deleteFiles) {
+        if(deleteFiles == null) return;
         for (FileDTO file : deleteFiles) {
             if (file != null) {
                 file.setPk_idx(draftIdx);
                 file.setCode_name(codeName);
-
+                logger.info("deleteFiles 메서드");
                 deleteFileFromServer(file);
                 deleteFileFromDB(file);
             }
@@ -161,12 +130,15 @@ public class FileService {
 
     // DB에서 파일 삭제
     public void deleteFileFromDB(FileDTO file) {
+        logger.info("들어옴");
+        logger.info("newFilename : " + file.getNew_filename());
         fileDAO.deleteFile(file);
     }
 
-
-
-
+    // DB 파일 정보가져오기
+    public List<FileDTO> getAttachedFiles(String draft_idx, String code_name) {
+        return fileDAO.getAttachedFiles(draft_idx, code_name);
+    }
 
 
 }

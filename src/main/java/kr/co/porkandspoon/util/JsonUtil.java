@@ -2,6 +2,10 @@ package kr.co.porkandspoon.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class JsonUtil {
@@ -15,9 +19,15 @@ public class JsonUtil {
      * @param clazz : 변환하고 싶은 타입 클래스
      */
     public static <T> List<T> jsonToList(String json, Class<T> clazz) {
+        if (json == null || json.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
         try {
             return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, clazz));
-        } catch (JsonProcessingException e) {
+        } catch (MismatchedInputException e){
+            return new ArrayList<>();
+        }
+        catch (JsonProcessingException e) {
             throw new RuntimeException("jsonToList 파싱 실패", e);
         }
     }

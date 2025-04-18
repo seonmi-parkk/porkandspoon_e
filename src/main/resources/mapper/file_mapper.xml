@@ -18,5 +18,11 @@
 		  AND pk_idx = #{pk_idx}
 		  AND new_filename = #{new_filename}
 	</delete>
+
+	<select id="getAttachedFiles" parameterType="String" resultType="kr.co.porkandspoon.dto.FileDTO">
+		SELECT ori_filename, new_filename, pk_idx FROM file
+		WHERE code_name = #{code_name}
+		  AND pk_idx = #{draft_idx}
+	</select>
 	
 </mapper>
