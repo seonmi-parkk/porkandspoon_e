@@ -3,6 +3,7 @@ package kr.co.porkandspoon.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.co.porkandspoon.dao.ApprovalDAO;
 import kr.co.porkandspoon.dto.*;
+import kr.co.porkandspoon.enums.*;
 import kr.co.porkandspoon.util.JsonUtil;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,17 +63,17 @@ public class ApprovalService {
 			// 게시글 이미지 파일 복사 저장 (임시저장 폴더 -> 저장 폴더)
 			fileService.moveFiles(approvalDTO.getFileList());
 			// 로고파일 저장
-			fileService.saveFiles(draftIdx, "bl001", logoFile);
+			fileService.saveFiles(draftIdx, FileCodeName.BRAND_LOGO.getCode(), logoFile);
 			// 첨부파일 저장
-			fileService.saveFiles(draftIdx, "df000", attachedFiles);
+			fileService.saveFiles(draftIdx, FileCodeName.DRAFT.getCode(), attachedFiles);
 		}else{
 			updateDraft(approvalDTO, attachedFiles, logoFile, "false");
 		}
 
 		// 임시저장이 아닌 상신의 경우
-        if(status.equals("sd")) {
+        if(status.equals(DraftStatus.SUBMITTED.getCode())) {
         	// 알림 요청
-        	NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(),draftIdx,"ml007");
+        	NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(),draftIdx,AlarmType.APPROVAL_REQUEST.getCode());
     		alarmService.saveAlarm(noticedto);
         }
         return draftIdx;
@@ -81,7 +82,7 @@ public class ApprovalService {
 	@Transactional
 	public void updateDraft(ApprovalDTO approvalDTO, MultipartFile[] newFiles, MultipartFile[] logoFile, String reapproval) {
 		String draftIdx = approvalDTO.getDraft_idx();
-		String status = reapproval.equals("true") ? "sd" : "sv";
+		String status = reapproval.equals("true") ? DraftStatus.SUBMITTED.getCode() : DraftStatus.SAVED.getCode();
 		approvalDTO.setStatus(status);
 		// draft 테이블에 업데이트
 		approvalDAO.updateDraft(approvalDTO);
@@ -92,11 +93,11 @@ public class ApprovalService {
 
 		// 로고파일 업데이트
 		if(logoFile != null) {
-			fileService.saveFiles(draftIdx, "bl001", logoFile);
+			fileService.saveFiles(draftIdx, FileCodeName.BRAND_LOGO.getCode(), logoFile);
 		}
 		// 첨부파일 업데이트
 		if(newFiles != null) {
-			fileService.saveFiles(draftIdx, "df000", newFiles);
+			fileService.saveFiles(draftIdx, FileCodeName.DRAFT.getCode(), newFiles);
 		}
 	}
 
@@ -125,13 +126,19 @@ public class ApprovalService {
 		String draftIdx = approvalDTO.getDraft_idx();
 		List<String> appr_user = approvalDTO.getAppr_user();
 
-		// 기존 결재라인 삭제
 		approvalDAO.deleteApprovalLines(draftIdx);
 
 		// 새로운 결재라인 리스트 생성
 		List<ApprovalDTO> newApprovalLines = new ArrayList<>();
 		for (int i = 0; i < appr_user.size(); i++) {
 			ApprovalDTO line = new ApprovalDTO();
+			if(i == 0 && approvalDTO.getStatus().equals(DraftStatus.SUBMITTED.getCode())) {
+				// 상신 상태이며 기안자인 경우 결재 처리
+				line.setStatus(ApprovalStatus.COMPLETED.getCode());
+				line.setApproval_date(LocalDateTime.now().toString());
+			}else {
+				line.setStatus(ApprovalStatus.UNCHECKED.getCode());
+			}
 			line.setDraft_idx(draftIdx);
 			line.setUsername(appr_user.get(i));
 			line.setOrder_num(i);
@@ -139,7 +146,6 @@ public class ApprovalService {
 		}
 		if(!newApprovalLines.isEmpty()) {
 			approvalDAO.batchInsertApprovalLines(newApprovalLines);
-
 		}
 	}
 
@@ -148,9 +154,9 @@ public class ApprovalService {
 	public String generateDocumentNumber(String target_type) {
 		String date = new SimpleDateFormat("yyyy").format(new Date());
 		String prefix = "";
-		if(target_type.equals("df001")) {
+		if(target_type.equals(DraftTargetType.BRAND.getCode())) {
 			prefix = "B";
-		}else if(target_type.equals("df002")) {
+		}else if(target_type.equals(DraftTargetType.DIRECT_STORE.getCode())) {
 			prefix = "P";
 		}
 		Integer maxNumber = approvalDAO.getMaxNumberForDate(prefix+date);
@@ -181,7 +187,7 @@ public class ApprovalService {
 		int draftRow = approvalDAO.changeStatusToReturn(approvalDTO);
 
 		// 결재 반려 알림
-		NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(),approvalDTO.getDraft_idx(),"ml009");
+		NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(),approvalDTO.getDraft_idx(), AlarmType.APPROVAL_REFUSAL.getCode());
 		alarmService.saveAlarm(noticedto);
 
 		return approvalRow > 0 && draftRow > 0;
@@ -192,7 +198,7 @@ public class ApprovalService {
 		// 기안자여부
 		boolean isDraftSender = isDraftSender(draft_idx,loginId);
 		// 기안문 결재진행중 여부
-		boolean ongoingApproval = getDraftStatus(draft_idx).equals("sd");
+		boolean ongoingApproval = getDraftStatus(draft_idx).equals(DraftStatus.SUBMITTED.getCode());
 		if(isDraftSender && ongoingApproval) {
 			approvalDAO.approvalRecall(draft_idx);
 			result = true;
@@ -223,7 +229,7 @@ public class ApprovalService {
 		boolean isDraftSender = isDraftSender(draft_idx,loginId);
 		// 기안문 상태 확인(임시저장 or 회수)
 		String draftStatus = getDraftStatus(draft_idx);
-		boolean deletable = draftStatus.equals("sv") || draftStatus.equals("ca");
+		boolean deletable = draftStatus.equals(DraftStatus.SAVED.getCode()) || draftStatus.equals(DraftStatus.RECALLED.getCode());
 		if(isDraftSender && deletable) {
 			approvalDAO.changeStatusToDelete(draft_idx);
 			result = true;
@@ -256,7 +262,7 @@ public class ApprovalService {
 		// 수정인 경우(재기안x)
 		if (!reapproval) {
 			// 임시저장 상태인지 체크
-			boolean isSaved = getDraftStatus(draftIdx).equals("sv");
+			boolean isSaved = getDraftStatus(draftIdx).equals(DraftStatus.SAVED.getCode());
 			permission = isDraftSender && isSaved;
 			// 상신인 경우
 			if (!isSaved) {
@@ -276,14 +282,13 @@ public class ApprovalService {
 
 	@Transactional
 	public String draftUpdate(String deletedFilesJson, MultipartFile[] logoFile, MultipartFile[] newFiles, String imgsJson, ApprovalDTO approvalDTO, String reapproval) {
-		//logger.info("deletedFileIdsJson!! : " + deletedFilesJson);
 		String draftIdx = approvalDTO.getDraft_idx();
 
 		/* 새 로고파일 첨부시 */
 		if (logoFile != null && logoFile.length > 0) {
 			// 기존 로고 삭제
 			FileDTO logoFileDto = getLogoFile(draftIdx);
-			fileService.deleteFiles(draftIdx, "bl001", logoFileDto);
+			fileService.deleteFiles(draftIdx, FileCodeName.BRAND_LOGO.getCode(), logoFileDto);
 		}
 
 		/* 일반 첨부파일 */
@@ -294,7 +299,7 @@ public class ApprovalService {
 			for (String file : deletedFiles) {
 				FileDTO fileDto = new FileDTO();
 				fileDto.setNew_filename(file);
-				fileService.deleteFiles(draftIdx, "df000", fileDto);
+				fileService.deleteFiles(draftIdx, FileCodeName.DRAFT.getCode(), fileDto);
 			}
 		}
 
@@ -321,7 +326,7 @@ public class ApprovalService {
 			approverTurn = true;
 			List<String> otherApproversStatus = otherApproversStatus(draftIdx,loginId);
 			for (String status : otherApproversStatus) {
-				if(!status.equals("ap004")) {
+				if(!status.equals(ApprovalStatus.COMPLETED.getCode())) {
 					approverTurn = false;
 					break;
 				}
@@ -335,7 +340,7 @@ public class ApprovalService {
 		// 기안부서 여부
 		boolean isApproveDept = isApproveDept(draftIdx,userDept);
 		// 기안문 삭제 여부
-		boolean isDeleted = getDraftStatus(draftIdx).equals("de");
+		boolean isDeleted = getDraftStatus(draftIdx).equals(DraftStatus.DELELTED.getCode());
 		boolean permitted = (isDraftSender || approverStatus != null || isCooperDept || isApproveDept) && !isDeleted;
 
 		String message = "";
@@ -370,11 +375,11 @@ public class ApprovalService {
 		}else {
 			// 마지막 결재자가 아닌경우
 			// 다음 사람에게 요청 알림
-			NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(), approvalDTO.getDraft_idx(), "ml007");
+			NoticeDTO noticedto = new NoticeDTO(approvalDTO.getUsername(), approvalDTO.getDraft_idx(), AlarmType.APPROVAL_REQUEST.getCode());
 			alarmService.saveAlarm(noticedto);
 
-			// 기안자에게 승인 요청 알림
-			NoticeDTO noticedto2 = new NoticeDTO(approvalDTO.getUsername(), approvalDTO.getDraft_idx(), "ml008");
+			// 기안자에게 승인 알림
+			NoticeDTO noticedto2 = new NoticeDTO(approvalDTO.getUsername(), approvalDTO.getDraft_idx(), AlarmType.APPROVAL_COMPLETED.getCode());
 			alarmService.saveAlarm(noticedto2);
 		}
 

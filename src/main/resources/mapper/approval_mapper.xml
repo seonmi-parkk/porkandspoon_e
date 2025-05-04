@@ -152,14 +152,7 @@
 		INSERT INTO approval_line (draft_idx, username, order_num, status, approval_date)
 		VALUES
 		<foreach collection="list" item="line" index="index" separator=",">
-			<choose>
-				<when test="index == 0 and line.status == 'sd'">
-					(#{line.draft_idx}, #{line.username}, #{line.order_num}, 'ap004', NOW())
-				</when>
-				<otherwise>
-					(#{line.draft_idx}, #{line.username}, #{line.order_num}, 'ap001', null)
-				</otherwise>
-			</choose>
+			(#{line.draft_idx}, #{line.username}, #{line.order_num}, #{line.status}, #{line.approval_date})
 		</foreach>
 	</insert>
 
@@ -176,7 +169,6 @@
 		</foreach>
 	</update>
 
-	<!-- upsert로 변경전 -->
 	<insert id="saveApprovalLine" parameterType="kr.co.porkandspoon.dto.ApprovalDTO">
 		INSERT INTO approval_line (draft_idx, username, order_num, status, approval_date) 
 		values
