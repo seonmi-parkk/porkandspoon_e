@@ -5,61 +5,83 @@ import java.util.List;
 
 public class MenuDTO {
   
-	private int depth1_idx;
-	private String depth1_name;
-	private String depth1_url;
-	private String depth1_role;
-	private String depth1_icon;
-    private List<MenuDepth2DTO> childMenus = new ArrayList<MenuDepth2DTO>();
-    
+	private int idx;
+	private String name;
+	private String url;
+	private String role;
+	private String icon;
+    private List<MenuDTO> childMenus = new ArrayList<MenuDTO>();
 
-	public int getDepth1_idx() {
-		return depth1_idx;
+	public MenuDTO() {}
+
+	// Depth1 생성
+	public static MenuDTO createDepth1(Integer idx, String name, String url, String role, String icon) {
+		MenuDTO menu = new MenuDTO();
+		menu.idx = idx;
+		menu.name = name;
+		menu.url = url;
+		menu.role = role;
+		menu.icon = icon;
+		return menu;
 	}
 
-	public String getDepth1_name() {
-		return depth1_name;
+	// Depth2 생성
+	public static MenuDTO createDepth2(Integer idx, String name, String url, String role) {
+		MenuDTO menu = new MenuDTO();
+		menu.idx = idx;
+		menu.name = name;
+		menu.url = url;
+		menu.role = role;
+		return menu;
 	}
 
-	public String getDepth1_url() {
-		return depth1_url;
+	public int getIdx() { return idx; }
+
+	public String getName() {
+		return name;
 	}
 
-	public String getDepth1_role() {
-		return depth1_role;
+	public String getUrl() {
+		return url;
 	}
 
-	public List<MenuDepth2DTO> getChildMenus() {
+	public String getRole() {
+		return role;
+	}
+
+	public String getIcon() {
+		return icon;
+	}
+
+	public List<MenuDTO> getChildMenus() {
 		return childMenus;
 	}
 
-	public void setDepth1_idx(int depth1_idx) {
-		this.depth1_idx = depth1_idx;
+	public void setIdx(int idx) {
+		this.idx = idx;
 	}
 
-	public void setDepth1_name(String depth1_name) {
-		this.depth1_name = depth1_name;
+	public void setName(String name) {
+		this.name = name;
 	}
 
-	public void setDepth1_url(String depth1_url) {
-		this.depth1_url = depth1_url;
+	public void setUrl(String url) {
+		this.url = url;
 	}
 
-	public void setDepth1_role(String depth1_role) {
-		this.depth1_role = depth1_role;
+	public void setRole(String role) {
+		this.role = role;
 	}
 
-	public void setChildMenus(List<MenuDepth2DTO> childMenus) {
+	public void setIcon(String icon) {
+		this.icon = icon;
+	}
+
+	public void setChildMenus(List<MenuDTO> childMenus) {
 		this.childMenus = childMenus;
 	}
 
-	public String getDepth1_icon() {
-		return depth1_icon;
-	}
 
-	public void setDepth1_icon(String depth1_icon) {
-		this.depth1_icon = depth1_icon;
-	}
 
 	
 }

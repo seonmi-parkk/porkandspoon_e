@@ -43,17 +43,17 @@
 				content +='<a class="sidebar-link"> ';
 			}else{
 				content +='">';
-				content +='<a href="'+menu.depth1_url+'" class=\"sidebar-link\"> ';
+				content +='<a href="'+menu.url+'" class=\"sidebar-link\"> ';
 			}
 
-			content +='<i class="bi '+menu.depth1_icon+'"></i> ';
-			content +='<span>'+menu.depth1_name+'</span></a>';
+			content +='<i class="bi '+menu.icon+'"></i> ';
+			content +='<span>'+menu.name+'</span></a>';
 
 			if(menu.childMenus.length > 0){
 				content +='<ul class="submenu">';
-				for (var menu2 of menu.childMenus) {
+				for (var menuDepth2 of menu.childMenus) {
 					content +='<li class="submenu-item ">';
-					content +='<a href="'+menu2.depth2_url+'" class="submenu-link">'+menu2.depth2_name+'</a>';
+					content +='<a href="'+menuDepth2.url+'" class="submenu-link">'+menuDepth2.name+'</a>';
 					content +='</li>';
 				}
 			}

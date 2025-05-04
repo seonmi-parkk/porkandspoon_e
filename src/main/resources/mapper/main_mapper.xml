@@ -15,10 +15,11 @@
 		    m2.menu_name AS depth2_name,
 		    m2.url AS depth2_url,
 		    m2.role AS depth2_role
-		FROM 
-		    menu m1
-		LEFT JOIN 
-		    menu m2 ON m1.menu_idx = m2.parent_idx AND m2.use_yn = 'Y' AND m2.`depth` = 2
+		FROM menu m1
+		LEFT JOIN menu m2
+		    ON m1.menu_idx = m2.parent_idx
+			AND m2.`depth` = 2
+		    AND m2.use_yn = 'Y'
 		WHERE 
 		    m1.depth = 1
 		AND 
@@ -26,5 +27,4 @@
 		ORDER BY 
 		    m1.menu_order, m2.menu_order
 	</select>
-	
 </mapper>

@@ -4,7 +4,6 @@ import kr.co.porkandspoon.dao.MainDAO;
 import kr.co.porkandspoon.dao.UserDAO;
 import kr.co.porkandspoon.dto.MainDto;
 import kr.co.porkandspoon.dto.MenuDTO;
-import kr.co.porkandspoon.dto.MenuDepth2DTO;
 import kr.co.porkandspoon.dto.UserDTO;
 import kr.co.porkandspoon.util.security.CustomUserDetails;
 import org.slf4j.Logger;
@@ -14,7 +13,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class MainService {
@@ -38,7 +36,7 @@ public class MainService {
 	}
 
 	public List<MenuDTO> getMenu() {
-		// 로그인 사용자 권한 얻기
+		// 로그인 사용자 권한 가져오기
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
 		if (authorities.isEmpty()) {
@@ -46,8 +44,11 @@ public class MainService {
 		}
 		String userRole = authorities.iterator().next().getAuthority();
 
+		// 최종 메뉴 리스트
 		List<MenuDTO> menuList = new ArrayList<>();
+		// db에서 메뉴 조회
 		List<Map<String, Object>> rawData = menuDAO.getMenu();
+		// depth1 메뉴 존재 여부(중복생성 방지)의 빠른 조회를 위해 List 대신 Map 사용
 		Map<Integer, MenuDTO> depth1MenuMap = new HashMap<>();
 
 		for (Map<String, Object> row : rawData) {
@@ -61,12 +62,13 @@ public class MainService {
 
 			MenuDTO depth1Menu = depth1MenuMap.get(depth1Idx);
 			if (depth1Menu == null) {
-				depth1Menu = new MenuDTO();
-				depth1Menu.setDepth1_idx(depth1Idx);
-				depth1Menu.setDepth1_name((String) row.get("depth1_name"));
-				depth1Menu.setDepth1_url((String) row.get("depth1_url"));
-				depth1Menu.setDepth1_role(depth1Role);
-				depth1Menu.setDepth1_icon((String) row.get("depth1_icon"));
+				depth1Menu = MenuDTO.createDepth1(
+					depth1Idx,
+					(String) row.get("depth1_name"),
+					(String) row.get("depth1_url"),
+					depth1Role,
+					(String) row.get("depth1_icon")
+				);
 				depth1MenuMap.put(depth1Idx, depth1Menu);
 				menuList.add(depth1Menu);
 			}
@@ -81,11 +83,12 @@ public class MainService {
 					continue;
 				}
 
-				MenuDepth2DTO depth2Menu = new MenuDepth2DTO();
-				depth2Menu.setDepth2_idx(depth2Idx);
-				depth2Menu.setDepth2_name((String) row.get("depth2_name"));
-				depth2Menu.setDepth2_url((String) row.get("depth2_url"));
-				depth2Menu.setDepth2_role(depth2Role);
+				MenuDTO depth2Menu = MenuDTO.createDepth2(
+					depth2Idx,
+					(String) row.get("depth2_name"),
+					(String) row.get("depth2_url"),
+					depth2Role
+				);
 				depth1Menu.getChildMenus().add(depth2Menu);
 			}
 		}
@@ -97,9 +100,9 @@ public class MainService {
 		// 전체 접근 가능한 메뉴의 경우
 		if (menuRoles == null || menuRoles.isBlank()) return true;
 		// ROLE_ 접두사 제거
-		String normalizedUserRole = userRole.replace("ROLE_", "").toLowerCase();
+		String UserRoleName = userRole.replace("ROLE_", "").toLowerCase();
 
-		return Arrays.asList(menuRoles.split(",")).contains(normalizedUserRole);
+		return Arrays.asList(menuRoles.split(",")).contains(UserRoleName);
 	}
 
     public MainDto getMainViewData(CustomUserDetails userDetails) {
