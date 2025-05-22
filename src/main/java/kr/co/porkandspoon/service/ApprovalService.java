@@ -1,6 +1,5 @@
 package kr.co.porkandspoon.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.co.porkandspoon.dao.ApprovalDAO;
 import kr.co.porkandspoon.dto.*;
 import kr.co.porkandspoon.enums.*;
@@ -126,7 +125,7 @@ public class ApprovalService {
 		String draftIdx = approvalDTO.getDraft_idx();
 		List<String> appr_user = approvalDTO.getAppr_user();
 
-		approvalDAO.deleteApprovalLines(draftIdx);
+		//approvalDAO.deleteApprovalLines(draftIdx);
 
 		// 새로운 결재라인 리스트 생성
 		List<ApprovalDTO> newApprovalLines = new ArrayList<>();
@@ -145,7 +144,7 @@ public class ApprovalService {
 			newApprovalLines.add(line);
 		}
 		if(!newApprovalLines.isEmpty()) {
-			approvalDAO.batchInsertApprovalLines(newApprovalLines);
+			approvalDAO.batchUpdateApprovalLines(newApprovalLines);
 		}
 	}
 
@@ -195,15 +194,7 @@ public class ApprovalService {
 
 	public boolean approvalRecall(String draft_idx, String loginId) {
 		boolean result = false;
-		// 기안자여부
-		boolean isDraftSender = isDraftSender(draft_idx,loginId);
-		// 기안문 결재진행중 여부
-		boolean ongoingApproval = getDraftStatus(draft_idx).equals(DraftStatus.SUBMITTED.getCode());
-		if(isDraftSender && ongoingApproval) {
-			approvalDAO.approvalRecall(draft_idx);
-			result = true;
-		}
-		return result;
+		return approvalDAO.approvalRecall(draft_idx) > 0;
 	}
 
 	public int changeStatusToApproved(String draft_idx) {
@@ -214,7 +205,9 @@ public class ApprovalService {
 	public boolean changeStatusToSend(String draft_idx, String loginId) {
 		boolean result = false;
 		// 기안자여부
-		boolean isDraftSender = isDraftSender(draft_idx,loginId);
+		ApprovalAuthDTO authDTO = getDraftAuthInfo(draft_idx);
+		// 기안자여부
+		boolean isDraftSender = isDraftSender(authDTO,loginId);
 		if(isDraftSender) {
 			int draftResult = approvalDAO.changeStatusToSend(draft_idx);
 			int apprLineResult = approvalDAO.changeSenderStatus(draft_idx,loginId);
@@ -226,9 +219,10 @@ public class ApprovalService {
 	public boolean changeStatusToDelete(String draft_idx, String loginId) {
 		boolean result = false;
 		// 기안자여부
-		boolean isDraftSender = isDraftSender(draft_idx,loginId);
+		ApprovalAuthDTO authDTO = getDraftAuthInfo(draft_idx);
+		boolean isDraftSender = isDraftSender(authDTO,loginId);
 		// 기안문 상태 확인(임시저장 or 회수)
-		String draftStatus = getDraftStatus(draft_idx);
+		String draftStatus = getDraftStatus(authDTO);
 		boolean deletable = draftStatus.equals(DraftStatus.SAVED.getCode()) || draftStatus.equals(DraftStatus.RECALLED.getCode());
 		if(isDraftSender && deletable) {
 			approvalDAO.changeStatusToDelete(draft_idx);
@@ -251,8 +245,9 @@ public class ApprovalService {
 
 	@Transactional
 	public Map<String, Object> getDraftUpdateViewData(String draftIdx, String loginId, boolean reapproval) {
-		// 기안자 여부
-		boolean isDraftSender = isDraftSender(draftIdx, loginId);
+		ApprovalAuthDTO authDTO = getDraftAuthInfo(draftIdx);
+		// 기안자여부
+		boolean isDraftSender = isDraftSender(authDTO,loginId);
 		boolean permission = false;
 		String message = "";
 		// 전송 메세지
@@ -262,7 +257,7 @@ public class ApprovalService {
 		// 수정인 경우(재기안x)
 		if (!reapproval) {
 			// 임시저장 상태인지 체크
-			boolean isSaved = getDraftStatus(draftIdx).equals(DraftStatus.SAVED.getCode());
+			boolean isSaved = getDraftStatus(authDTO).equals(DraftStatus.SAVED.getCode());
 			permission = isDraftSender && isSaved;
 			// 상신인 경우
 			if (!isSaved) {
@@ -312,26 +307,13 @@ public class ApprovalService {
 	// 기안문 열람 권한 체크
 	public DraftPermissionResultDTO checkPermission(String draftIdx, String loginId) {
 		// 기안자여부
-		boolean isDraftSender = isDraftSender(draftIdx,loginId);
-		// 본인의 결재정보 (순서, 상태)
-		ApprovalDTO userApproverInfo = approverStatus(draftIdx,loginId);
+		ApprovalAuthDTO authDTO = getDraftAuthInfo(draftIdx);
+		boolean isDraftSender = isDraftSender(authDTO,loginId);
+		// 로그인 유저 결재 상태
+		String approverStatus = approverStatus(draftIdx, loginId).getStatus();
 
-		boolean approverTurn = false;
-		String approverStatus = null;
-
-		if(userApproverInfo != null){
-			approverStatus = userApproverInfo.getStatus();
-
-			// 이전 결재자들의 결재상태 (내 순서인지 체크)
-			approverTurn = true;
-			List<String> otherApproversStatus = otherApproversStatus(draftIdx,loginId);
-			for (String status : otherApproversStatus) {
-				if(!status.equals(ApprovalStatus.COMPLETED.getCode())) {
-					approverTurn = false;
-					break;
-				}
-			}
-		}
+		// 결재 순서 체크
+		boolean approverTurn = isCurrentAndLastApprover(draftIdx, loginId);
 
 		// 로그인 유저의 부서정보
 		String userDept = getUserDept(loginId);
@@ -340,7 +322,7 @@ public class ApprovalService {
 		// 기안부서 여부
 		boolean isApproveDept = isApproveDept(draftIdx,userDept);
 		// 기안문 삭제 여부
-		boolean isDeleted = getDraftStatus(draftIdx).equals(DraftStatus.DELELTED.getCode());
+		boolean isDeleted = getDraftStatus(authDTO).equals(DraftStatus.DELELTED.getCode());
 		boolean permitted = (isDraftSender || approverStatus != null || isCooperDept || isApproveDept) && !isDeleted;
 
 		String message = "";
@@ -356,6 +338,29 @@ public class ApprovalService {
 		return result;
 	}
 
+	public boolean isCurrentAndLastApprover(String draftIdx, String loginId) {
+		boolean approverTurn = false;
+		ApprovalDTO userApproverInfo = approverStatus(draftIdx,loginId);
+
+		// 결재자 여부
+		if(userApproverInfo != null){
+			// 이전 결재자들의 결재상태 (내 순서인지 체크)
+			approverTurn = true;
+			List<String> otherApproversStatus = otherApproversStatus(draftIdx,loginId);
+
+			boolean lastOrder = userApproverInfo.getOrder_num() == otherApproversStatus.size();
+
+			for (String status : otherApproversStatus) {
+				if(!status.equals(ApprovalStatus.COMPLETED.getCode())) {
+					approverTurn = false;
+					break;
+				}
+			}
+		}
+		return approverTurn;
+	}
+
+	@Transactional
 	public boolean approvalDraft(ApprovalDTO approvalDTO) {
 		boolean result = false;
 		// 결재라인 테이블 결재자 상태코드 변경
@@ -424,6 +429,10 @@ public class ApprovalService {
 		return approvalDAO.deleteBookmark(lineIdx, loginId) > 0;
 	}
 
+	public ApprovalAuthDTO getDraftAuthInfo(String draftIdx) {
+		return approvalDAO.getDraftAuthInfo(draftIdx);
+	}
+
 	//결재할 기안문 수
 	public int haveToApproveCount(String loginId) {
 		return approvalDAO.haveToApproveCount(loginId);
@@ -439,8 +448,8 @@ public class ApprovalService {
 	}
 
 	// 열람권한체크
-	public boolean isDraftSender(String draft_idx, String loginId) {
-		return approvalDAO.isDraftSender(draft_idx,loginId) != null;
+	public boolean isDraftSender(ApprovalAuthDTO authDTO, String loginId) {
+		return authDTO.getUsername().equals(loginId);
 	}
 	// 열람권한체크
 	public ApprovalDTO approverStatus(String draft_idx, String loginId) {
@@ -455,8 +464,8 @@ public class ApprovalService {
 		return approvalDAO.isApproveDept(draft_idx,userDept) != null;
 	}
 
-	public String getDraftStatus(String draft_idx) {
-		return approvalDAO.getDraftStatus(draft_idx);
+	public String getDraftStatus(ApprovalAuthDTO authDTO) {
+		return authDTO.getStatus();
 	}
 
 	public int changeStatusToRead(String loginId, String draft_idx) {

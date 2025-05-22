@@ -1,9 +1,6 @@
 package kr.co.porkandspoon.dao;
 
-import kr.co.porkandspoon.dto.ApprovalDTO;
-import kr.co.porkandspoon.dto.DeptDTO;
-import kr.co.porkandspoon.dto.FileDTO;
-import kr.co.porkandspoon.dto.UserDTO;
+import kr.co.porkandspoon.dto.*;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -98,4 +95,6 @@ public interface ApprovalDAO {
 	void deleteApprovalLines(String draftIdx);
 
 	String getNewFileName(FileDTO fileDto, boolean logoYn);
+
+	ApprovalAuthDTO getDraftAuthInfo(String draftIdx);
 }

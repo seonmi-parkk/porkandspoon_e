@@ -43,6 +43,12 @@
 		FROM 
 			department
 	</select>
+
+	<select id="getDraftAuthInfo">
+		SELECT draft_idx, username, status, dept_id, cooper_dept_id
+		FROM draft
+		WHERE draft_idx = #{draftIdx}
+	</select>
 	
 	<select id="getDraftIdx">
 		SELECT 

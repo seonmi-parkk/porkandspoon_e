@@ -1,16 +1,13 @@
 package kr.co.porkandspoon.controller;
 
 import kr.co.porkandspoon.dto.*;
+import kr.co.porkandspoon.enums.DraftStatus;
 import kr.co.porkandspoon.service.ApprovalService;
 import kr.co.porkandspoon.util.CommonUtil;
 import kr.co.porkandspoon.util.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 @RestController
@@ -202,9 +195,16 @@ public class ApprovalController {
 	@Transactional
 	@PostMapping(value="/ApprovalDraft")
 	public Map<String, Object> approvalDraft(@ModelAttribute ApprovalDTO approvalDTO, @AuthenticationPrincipal UserDetails userDetails) {
-		approvalDTO.setUsername(userDetails.getUsername());
+		boolean success = false;
+		String loginId = userDetails.getUsername();
+		approvalDTO.setUsername(loginId);
 		Map<String, Object> result = new HashMap<String, Object>();
-		result.put("success",approvalService.approvalDraft(approvalDTO));
+		// 결재자 여부, 순서 체크
+		boolean approverTurn = approvalService.isCurrentAndLastApprover(approvalDTO.getDraft_idx(), loginId);
+		if(approverTurn){
+			success = approvalService.approvalDraft(approvalDTO);
+		}
+		result.put("success", success);
 		return result;
 	}
 	
@@ -213,7 +213,17 @@ public class ApprovalController {
 	public Map<String, Object> approvalRecall(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails){
 		Map<String, Object> result = new HashMap<String, Object>();
 		String loginId = userDetails.getUsername();
-		result.put("success", approvalService.approvalRecall(draft_idx,loginId));
+		// 기안문 회수 가능 여부 체크 (기안자, 결재상태)
+		ApprovalAuthDTO authDTO = approvalService.getDraftAuthInfo(draft_idx);
+		boolean isDraftSender = approvalService.isDraftSender(authDTO, loginId);
+		String draftStatus = approvalService.getDraftStatus(authDTO);
+		if(isDraftSender && DraftStatus.SUBMITTED.getCode().equals(draftStatus)){
+			result.put("success", approvalService.approvalRecall(draft_idx,loginId));
+		}else{
+			result.put("success", false);
+			result.put("message", "회수할 수 없는 상태입니다.");
+		}
+
 		return result;
 	}
 
