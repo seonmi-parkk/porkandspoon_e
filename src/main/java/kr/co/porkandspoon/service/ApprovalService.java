@@ -312,8 +312,8 @@ public class ApprovalService {
 		// 로그인 유저 결재 상태
 		String approverStatus = approverStatus(draftIdx, loginId).getStatus();
 
-		// 결재 순서 체크
-		boolean approverTurn = isCurrentAndLastApprover(draftIdx, loginId);
+		// 결재자여부 확인
+		boolean isApprover = approverStatus != null;
 
 		// 로그인 유저의 부서정보
 		String userDept = getUserDept(loginId);
@@ -334,47 +334,45 @@ public class ApprovalService {
 			message = "삭제된 기안문입니다.";
 		}
 
-		DraftPermissionResultDTO result = new DraftPermissionResultDTO(permitted, message, isDraftSender, approverStatus, approverTurn);
+		DraftPermissionResultDTO result = new DraftPermissionResultDTO(permitted, message, isDraftSender, approverStatus, isApprover);
 		return result;
 	}
 
-	public boolean isCurrentAndLastApprover(String draftIdx, String loginId) {
-		boolean approverTurn = false;
-		ApprovalDTO userApproverInfo = approverStatus(draftIdx,loginId);
-
-		// 결재자 여부
-		if(userApproverInfo != null){
-			// 이전 결재자들의 결재상태 (내 순서인지 체크)
-			approverTurn = true;
-			List<String> otherApproversStatus = otherApproversStatus(draftIdx,loginId);
-
-			boolean lastOrder = userApproverInfo.getOrder_num() == otherApproversStatus.size();
-
-			for (String status : otherApproversStatus) {
-				if(!status.equals(ApprovalStatus.COMPLETED.getCode())) {
-					approverTurn = false;
-					break;
-				}
+	public boolean isApprover(List<ApprovalLineDTO> dtoList, String loginId) {
+		// 현재 결재자의 순서
+		for(ApprovalLineDTO dto : dtoList){
+			if(dto.getUsername().equals(loginId)){
+				return true;
 			}
 		}
-		return approverTurn;
+		throw new IllegalArgumentException("해당 문서의 결재자가 아닙니다.");
+	}
+
+	public boolean isCurrentApprover(List<ApprovalLineDTO> dtoList, String loginId) {
+		// 현재 결재자의 순서
+		for(ApprovalLineDTO dto : dtoList){
+			if(dto.getStatus().equals(ApprovalStatus.IN_PROGRESS.getCode())){
+				return loginId.equals(dto.getUsername());
+			}
+		}
+		throw new IllegalArgumentException("결재 순서가 아닙니다.");
+	}
+
+	public boolean isLastApprover(List<ApprovalLineDTO> dtoList, String loginId) {
+		// 마지막 결재자 여부
+		String lastApprover = dtoList.get(dtoList.size()-1).getUsername();
+		return lastApprover.equals(loginId);
 	}
 
 	@Transactional
-	public boolean approvalDraft(ApprovalDTO approvalDTO) {
+	public boolean approvalDraft(ApprovalDTO approvalDTO, boolean isLastApprover) {
 		boolean result = false;
 		// 결재라인 테이블 결재자 상태코드 변경
 		// 기안문 결재
 		approvalDTO.setApproval_date(CreateNowDateTime());
 		int approvalRow = approvalDAO.ApprovalDraft(approvalDTO);
 
-		// 마지막 결재자인 경우 기안문테이블 상태코드 변경(결재완료)
-		ApprovalDTO approvalInfo = userApprovalInfo(approvalDTO);
-		//결재자 결재 순서
-		int orderNum = approvalInfo.getOrder_num();
-		//총 결재자 수
-		int totalCount = approvalInfo.getApproval_line_count();
-		if(orderNum == (totalCount-1)) {
+		if(isLastApprover) {
 			// 마지막 결재자인 경우
 			changeStatusToApproved(approvalDTO.getDraft_idx());
 		}else {

@@ -1,6 +1,8 @@
 package kr.co.porkandspoon.controller;
 
+import kr.co.porkandspoon.dao.ApprovalDAO;
 import kr.co.porkandspoon.dto.*;
+import kr.co.porkandspoon.enums.ApprovalStatus;
 import kr.co.porkandspoon.enums.DraftStatus;
 import kr.co.porkandspoon.service.ApprovalService;
 import kr.co.porkandspoon.util.CommonUtil;
@@ -22,12 +24,14 @@ import java.util.*;
 @RequestMapping("/approval")
 public class ApprovalController {
 
+	private final ApprovalDAO approvalDAO;
 	Logger logger = LoggerFactory.getLogger(getClass());
 	
 	private final ApprovalService approvalService;
 
-	public ApprovalController(ApprovalService approvalService) {
+	public ApprovalController(ApprovalService approvalService, ApprovalDAO approvalDAO) {
 		this.approvalService = approvalService;
+		this.approvalDAO = approvalDAO;
 	}
 	
 	@Value("${upload.path}") String paths;
@@ -196,26 +200,45 @@ public class ApprovalController {
 	@PostMapping(value="/ApprovalDraft")
 	public Map<String, Object> approvalDraft(@ModelAttribute ApprovalDTO approvalDTO, @AuthenticationPrincipal UserDetails userDetails) {
 		boolean success = false;
+		Map<String, Object> result = new HashMap<String, Object>();
+
 		String loginId = userDetails.getUsername();
 		approvalDTO.setUsername(loginId);
-		Map<String, Object> result = new HashMap<String, Object>();
-		// 결재자 여부, 순서 체크
-		boolean approverTurn = approvalService.isCurrentAndLastApprover(approvalDTO.getDraft_idx(), loginId);
-		if(approverTurn){
-			success = approvalService.approvalDraft(approvalDTO);
+		String draftIdx = approvalDTO.getDraft_idx();
+
+		// 결재자 여부 체크
+		List<ApprovalLineDTO> approvalLineDTOList = approvalDAO.getExistingApprovalLines(approvalDTO.getDraft_idx());
+		approvalService.isApprover(approvalLineDTOList, loginId);
+
+		// 결재순서 맞는지 체크
+		boolean isCurrentApprover = approvalService.isCurrentApprover(approvalLineDTOList, loginId);
+
+		// 마지막 결재자 여부 체크
+		boolean isLastApprover = approvalService.isLastApprover(approvalLineDTOList, loginId);
+
+		// 기안문 상태 체크
+		ApprovalAuthDTO authDTO = approvalService.getDraftAuthInfo(draftIdx);
+		boolean isSubmitted = authDTO.getStatus().equals(DraftStatus.SUBMITTED.getCode());
+
+		if(isSubmitted && isCurrentApprover){
+			success = approvalService.approvalDraft(approvalDTO, isLastApprover);
 		}
+
 		result.put("success", success);
 		return result;
 	}
-	
+
 	// 기안문 회수
 	@PutMapping(value="/recall/{draft_idx}")
 	public Map<String, Object> approvalRecall(@PathVariable String draft_idx, @AuthenticationPrincipal UserDetails userDetails){
 		Map<String, Object> result = new HashMap<String, Object>();
 		String loginId = userDetails.getUsername();
-		// 기안문 회수 가능 여부 체크 (기안자, 결재상태)
+
+		// 기안문 정보 가져오기
 		ApprovalAuthDTO authDTO = approvalService.getDraftAuthInfo(draft_idx);
+		// 기안자 여부 체크
 		boolean isDraftSender = approvalService.isDraftSender(authDTO, loginId);
+		// 기안문 상태 체크
 		String draftStatus = approvalService.getDraftStatus(authDTO);
 		if(isDraftSender && DraftStatus.SUBMITTED.getCode().equals(draftStatus)){
 			result.put("success", approvalService.approvalRecall(draft_idx,loginId));

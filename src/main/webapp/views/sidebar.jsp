@@ -25,6 +25,7 @@
 		data:{},
 		datatype:'JSON',
 		success:function(data){
+			console.log(data.menuList);
 			drawMenu(data.menuList);
 		},
 		error:function(e){
@@ -47,13 +48,13 @@
 			}
 
 			content +='<i class="bi '+menu.icon+'"></i> ';
-			content +='<span>'+menu.name+'</span></a>';
+			content +='<span>'+menu.menu_name+'</span></a>';
 
 			if(menu.childMenus.length > 0){
 				content +='<ul class="submenu">';
 				for (var menuDepth2 of menu.childMenus) {
 					content +='<li class="submenu-item ">';
-					content +='<a href="'+menuDepth2.url+'" class="submenu-link">'+menuDepth2.name+'</a>';
+					content +='<a href="'+menuDepth2.url+'" class="submenu-link">'+menuDepth2.menu_name+'</a>';
 					content +='</li>';
 				}
 			}

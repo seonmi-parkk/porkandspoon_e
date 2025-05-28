@@ -145,8 +145,8 @@
 	   AND username = #{username}
 	</select>
 
-	<select id="getExistingApprovalLines" resultType="kr.co.porkandspoon.dto.ApprovalDTO">
-		SELECT draft_idx, username, order_num
+	<select id="getExistingApprovalLines" resultType="kr.co.porkandspoon.dto.ApprovalLineDTO">
+		SELECT draft_idx, username, order_num, status
 			FROM approval_line
 			WHERE draft_idx = #{draftIdx}
 	</select>
@@ -316,12 +316,14 @@
 		    WHERE draft_idx = #{draft_idx}
 		    AND username = #{loginId}
 	</select>
+
 	<select id="approverStatus" parameterType="String" resultType="kr.co.porkandspoon.dto.ApprovalDTO">
 	    SELECT status, order_num 
 		    FROM approval_line 
 		    WHERE draft_idx = #{draft_idx}
 		    AND username = #{loginId}
 	</select>
+
 	<select id="otherApproversStatus" parameterType="String" resultType="String">
 	    <![CDATA[
 	    SELECT status

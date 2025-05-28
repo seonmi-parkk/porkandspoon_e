@@ -35,64 +35,27 @@ public class MainService {
 		this.userDAO = userDAO;
 	}
 
-	public List<MenuDTO> getMenu() {
-		// 로그인 사용자 권한 가져오기
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-		if (authorities.isEmpty()) {
-			throw new IllegalStateException("권한이 없는 사용자입니다.");
+	public List<MenuDTO> getMenu(String role) {
+		List<MenuDTO> rawMenuList = menuDAO.getMenu(role);
+		// 1depth 메뉴
+		Map<Integer, MenuDTO> depth1Map = new LinkedHashMap<>();
+		for (MenuDTO menu : rawMenuList) {
+			if (menu.getDepth() == 1) {
+				depth1Map.put(menu.getMenu_idx(), menu);
+			}
 		}
-		String userRole = authorities.iterator().next().getAuthority();
 
-		// 최종 메뉴 리스트
-		List<MenuDTO> menuList = new ArrayList<>();
-		// db에서 메뉴 조회
-		List<Map<String, Object>> rawData = menuDAO.getMenu();
-		// depth1 메뉴 존재 여부(중복생성 방지)의 빠른 조회를 위해 List 대신 Map 사용
-		Map<Integer, MenuDTO> depth1MenuMap = new HashMap<>();
-
-		for (Map<String, Object> row : rawData) {
-			int depth1Idx = (int) row.get("depth1_idx");
-			String depth1Role = (String) row.get("depth1_role");
-
-			// depth1 메뉴 접근 권한 확인
-			if (!hasAccess(userRole, depth1Role)) {
-				continue;
-			}
-
-			MenuDTO depth1Menu = depth1MenuMap.get(depth1Idx);
-			if (depth1Menu == null) {
-				depth1Menu = MenuDTO.createDepth1(
-					depth1Idx,
-					(String) row.get("depth1_name"),
-					(String) row.get("depth1_url"),
-					depth1Role,
-					(String) row.get("depth1_icon")
-				);
-				depth1MenuMap.put(depth1Idx, depth1Menu);
-				menuList.add(depth1Menu);
-			}
-
-			Integer depth2Idx = (Integer) row.get("depth2_idx");
-			// depth2 메뉴인 경우에만 수행
-			if (depth2Idx != null) {
-				String depth2Role = (String) row.get("depth2_role");
-
-				// depth2 메뉴 접근 권한 확인
-				if (!hasAccess(userRole, depth2Role)) {
-					continue;
+		// 2depth 메뉴를 1depth에 계층 구조로 붙이기
+		for (MenuDTO menu : rawMenuList) {
+			if (menu.getDepth() == 2) {
+				MenuDTO parent = depth1Map.get(menu.getParent_idx());
+				if (parent != null) {
+					parent.getChildMenus().add(menu);
 				}
-
-				MenuDTO depth2Menu = MenuDTO.createDepth2(
-					depth2Idx,
-					(String) row.get("depth2_name"),
-					(String) row.get("depth2_url"),
-					depth2Role
-				);
-				depth1Menu.getChildMenus().add(depth2Menu);
 			}
 		}
-		return menuList;
+
+		return new ArrayList<>(depth1Map.values());
 	}
 
 	// 메뉴 접근 권한 체크

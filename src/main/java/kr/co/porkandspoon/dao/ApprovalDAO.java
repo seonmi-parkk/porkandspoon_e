@@ -86,7 +86,7 @@ public interface ApprovalDAO {
 
 	ApprovalDTO userApprovalInfo(ApprovalDTO approvalDTO);
 
-	List<ApprovalDTO> getExistingApprovalLines(String draftIdx);
+	List<ApprovalLineDTO> getExistingApprovalLines(String draftIdx);
 
 	void batchInsertApprovalLines(List<ApprovalDTO> toInsert);
 
