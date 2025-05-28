@@ -9,6 +9,6 @@ import java.util.Map;
 @Mapper
 public interface MainDAO {
 
-	List<MenuDTO> getMenu(String role);
+	List<MenuDTO> getMenuList(String role);
 
 }

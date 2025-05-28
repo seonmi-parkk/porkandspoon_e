@@ -1,8 +1,11 @@
 package kr.co.porkandspoon.dto;
 
+import lombok.ToString;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@ToString
 public class MenuDTO {
   
 	private int menu_idx;

@@ -24,6 +24,9 @@
 		url:'/sidebar',
 		data:{},
 		datatype:'JSON',
+		xhrFields: {
+			withCredentials: true
+		},
 		success:function(data){
 			console.log(data.menuList);
 			drawMenu(data.menuList);

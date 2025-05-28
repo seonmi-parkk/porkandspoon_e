@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 
 @Configuration
 @EnableWebSecurity
@@ -50,7 +51,7 @@ public class SecurityConfig {
 
 
 		http.authorizeHttpRequests()
-				.antMatchers("/resources/**").permitAll() // resources 하위 폴더 허용
+				.antMatchers("/resources/**", "/sidebar").permitAll() // resources 하위 폴더 허용
 				.antMatchers("/", "/joinView", "/joinWrite", "/pageListCall", "/findUserId", "/sendMail", "/chackAuthCode", "/displayUserId/**", "/findPassword", "/changePassword", "/changePassword/**", "/timeoutAction").permitAll() // joinView, joinWrite 추후 제거
 				.antMatchers("/sa/**").hasRole("SUPERADMIN")
 				.antMatchers("/ad/**").hasAnyRole("SUPERADMIN", "ADMIN")
@@ -89,13 +90,13 @@ public class SecurityConfig {
 		http.csrf().ignoringAntMatchers("/wsConnect/**");
 		// WebSocket 엔드포인트 제외
 		// 개발 시 비활성화, 운영 시 활성화 검토
-		//http.httpBasic().disable().csrf().disable();
+		http.httpBasic().disable().csrf().disable();
+
 
 		http.authenticationProvider(authenticationProvider);
 
 		return http.build();
 	}
-
 
 
 }

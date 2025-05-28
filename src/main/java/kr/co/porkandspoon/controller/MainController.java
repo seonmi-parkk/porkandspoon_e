@@ -54,10 +54,10 @@ public class MainController {
 	}
 	
 	@GetMapping(value="/sidebar")
-	public Map<String, Object> getMenu(@AuthenticationPrincipal UserDetails userDetails) {
+	public Map<String, Object> getMenuList(@AuthenticationPrincipal UserDetails userDetails) {
 		Map<String, Object> result = new HashMap<String, Object>();
 		String role = userDetails.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
-		List<MenuDTO> menuList = mainService.getMenu(role);
+		List<MenuDTO> menuList = mainService.getMenuList(role);
 		result.put("menuList", menuList);
 		return result;
 	}
@@ -70,5 +70,7 @@ public class MainController {
 		result.put("userInfo",userDao.userDetail(loginId)); 
 		return result;
 	}
+
+
 
 }

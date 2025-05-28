@@ -7,6 +7,7 @@ import kr.co.porkandspoon.dto.MenuDTO;
 import kr.co.porkandspoon.dto.UserDTO;
 import kr.co.porkandspoon.util.security.CustomUserDetails;
 import org.slf4j.Logger;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,8 +36,9 @@ public class MainService {
 		this.userDAO = userDAO;
 	}
 
-	public List<MenuDTO> getMenu(String role) {
-		List<MenuDTO> rawMenuList = menuDAO.getMenu(role);
+	//@Cacheable(value = "MainMapper.getMenuList", key = "#role")
+	public List<MenuDTO> getMenuList(String role) {
+		List<MenuDTO> rawMenuList = menuDAO.getMenuList(role);
 		// 1depth 메뉴
 		Map<Integer, MenuDTO> depth1Map = new LinkedHashMap<>();
 		for (MenuDTO menu : rawMenuList) {

@@ -4,41 +4,21 @@
 >
 
 <mapper namespace="kr.co.porkandspoon.dao.MainDAO">
-	<select id="getMenu" resultType="kr.co.porkandspoon.dto.MenuDTO">
-		SELECT 
-		    *
-		FROM menu m1
-		WHERE 
-		    role IS NULL
-		OR
-			FIND_IN_SET(#{role}, role)
-		AND
-		    m1.use_yn = 'Y'
-		ORDER BY 
-		    parent_idx, menu_order
-	</select>
 
-<!--	<select id="getMenu" resultType="map">-->
-<!--		SELECT-->
-<!--			m1.menu_idx AS depth1_idx,-->
-<!--			m1.menu_name AS depth1_name,-->
-<!--			m1.url AS depth1_url,-->
-<!--			m1.role AS depth1_role,-->
-<!--			m1.icon AS depth1_icon,-->
-<!--			m2.menu_idx AS depth2_idx,-->
-<!--			m2.menu_name AS depth2_name,-->
-<!--			m2.url AS depth2_url,-->
-<!--			m2.role AS depth2_role-->
-<!--		FROM menu m1-->
-<!--				 LEFT JOIN menu m2-->
-<!--						   ON m1.menu_idx = m2.parent_idx-->
-<!--							   AND m2.`depth` = 2-->
-<!--							   AND m2.use_yn = 'Y'-->
-<!--		WHERE-->
-<!--			m1.depth = 1-->
-<!--		  AND-->
-<!--			m1.use_yn = 'Y'-->
-<!--		ORDER BY-->
-<!--			m1.menu_order, m2.menu_order-->
-<!--	</select>-->
+	<select id="getMenuList" resultType="kr.co.porkandspoon.dto.MenuDTO">
+        SELECT
+            menu_idx,
+               menu_name,
+               url,
+               icon,
+               parent_idx,
+               depth
+        FROM menu
+        WHERE role IS NULL
+           OR FIND_IN_SET(#{role}, role)
+            AND
+              use_yn = 'Y'
+        ORDER BY parent_idx, menu_order
+    </select>
+
 </mapper>
