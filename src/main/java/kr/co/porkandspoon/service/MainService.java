@@ -36,7 +36,7 @@ public class MainService {
 		this.userDAO = userDAO;
 	}
 
-	//@Cacheable(value = "MainMapper.getMenuList", key = "#role")
+	@Cacheable(value = "MainMapper.getMenuList", key = "#role")
 	public List<MenuDTO> getMenuList(String role) {
 		List<MenuDTO> rawMenuList = menuDAO.getMenuList(role);
 		// 1depth 메뉴
